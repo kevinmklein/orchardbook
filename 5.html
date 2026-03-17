@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Orchard Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style id="species-icons-style">
+/* ============================================================
+   SPECIES ICON SYSTEM
+   Each species gets a distinct muted background tone + emoji icon.
+   Health is shown via a status dot — not the entire card color.
+   ============================================================ */
+
+/* Base card tones by species — earthy, botanical, distinct */
+.spc-apple   { background: #e8efe0; color: #2d4a1e; }   /* sage green */
+.spc-pear    { background: #e8e8d8; color: #3a3a1e; }   /* warm khaki */
+.spc-peach   { background: #f0e0d0; color: #4a2e18; }   /* dusty peach */
+.spc-cherry  { background: #ecdcdc; color: #3a1a1a; }   /* rose blush */
+.spc-plum    { background: #e0daea; color: #2a1e3a; }   /* soft lavender */
+.spc-other   { background: #e8e4d8; color: #3a3420; }   /* parchment */
+
+/* Health status dots */
+.health-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  position: absolute; top: 5px; right: 5px; flex-shrink: 0;
+}
+.hd-healthy { background: #639922; }
+.hd-watch   { background: #BA7517; }
+.hd-concern { background: #A32D2D; box-shadow: 0 0 0 2px rgba(163,45,45,0.25); }
+</style>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+  import {
+    getFirestore,
+    collection, doc,
+    getDoc, getDocs,
+    addDoc, setDoc, deleteDoc,
+    serverTimestamp,
+    query, orderBy
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDMr6LTZYM4Jhp50DV4wCyOeEY1bcDJjIY",
+    authDomain: "orchardbook.firebaseapp.com",
+    projectId: "orchardbook",
+    storageBucket: "orchardbook.firebasestorage.app",
+    messagingSenderId: "28893214980",
+    appId: "1:28893214980:web:18d56949d73ecce09ab851"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  window._db = db;
+  window._fs = { collection, doc, getDoc, getDocs, addDoc, setDoc, deleteDoc, serverTimestamp, query, orderBy };
+  // Defer until after the main <script> block has parsed and init() has run
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 0);
+    });
+  }
+</script>
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --g900: #173404;
+  --g800: #27500A;
+  --g700: #3B6D11;
+  --g600: #639922;
+  --g200: #C0DD97;
+  --g100: #EAF3DE;
+  --g50:  #f4f9ee;
+
+  --a800: #633806;
+  --a600: #BA7517;
+  --a100: #FAEEDA;
+
+  --r800: #501313;
+  --r600: #A32D2D;
+  --r100: #FCEBEB;
+
+  --parchment: #faf8f3;
+  --parchment2: #f2ede3;
+
+  --surface: #ffffff;
+  --surface2: #f7f5f0;
+  --border: rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.13);
+  --text1: #1c1a14;
+  --text2: #5c5848;
+  --text3: #9c9880;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 18px rgba(0,0,0,0.08);
+
+  --sidebar-w: 224px;
+  --header-h: 58px;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Jost', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  font-weight: 300;
+  background: var(--parchment2);
+  color: var(--text1);
+  font-size: 13.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; font-weight: 300; }
+* { scrollbar-width: thin; scrollbar-color: var(--g200) transparent; }
+
+/* ============================================================
+   LAYOUT SHELL
+   ============================================================ */
+#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+.topbar {
+  height: var(--header-h);
+  background: var(--g800);
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 50;
+}
+.topbar-logo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--g200);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.topbar-logo span {
+  font-style: italic;
+  font-weight: 400;
+  font-size: 12px;
+  color: #6a8e40;
+  margin-left: 10px;
+  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+}
+.topbar-season {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--g200);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(192,221,151,0.2);
+  padding: 3px 13px;
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.topbar-spacer { flex: 1; }
+
+.user-switcher { display: flex; gap: 6px; align-items: center; }
+.user-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  color: white;
+  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+}
+.user-avatar:hover { transform: scale(1.1); }
+.user-avatar.active { border-color: var(--g200); transform: scale(1.12); }
+
+.body-wrap { display: flex; flex: 1; overflow: hidden; }
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--g900);
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+  padding: 24px 0 12px;
+  overflow-y: auto;
+}
+.sidebar-section {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #3a5a1a;
+  padding: 0 22px;
+  margin: 18px 0 6px;
+  font-weight: 500;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 22px;
+  color: #6a8e40;
+  font-size: 12.5px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  border-left: 2px solid transparent;
+  letter-spacing: 0.02em;
+}
+.sidebar-item:hover { background: rgba(255,255,255,0.03); color: var(--g200); }
+.sidebar-item.active { background: rgba(192,221,151,0.07); color: var(--g200); border-left-color: var(--g600); }
+.sidebar-icon { font-size: 14px; width: 18px; text-align: center; }
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 22px 0;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 10px;
+  color: #3a5a1a;
+  line-height: 1.8;
+}
+.sidebar-footer strong { color: #4a7020; display: block; margin-bottom: 2px; font-weight: 500; }
+
+/* MAIN */
+.main { flex: 1; overflow-y: auto; background: var(--parchment2); }
+.main-inner { padding: 28px; max-width: 1240px; margin: 0 auto; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ============================================================
+   SHARED COMPONENTS
+   ============================================================ */
+.page-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--g800);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.page-sub {
+  font-size: 11.5px;
+  font-weight: 300;
+  color: var(--text3);
+  letter-spacing: 0.02em;
+  margin-bottom: 22px;
+}
+.card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  padding: 13px 18px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  font-weight: 500;
+}
+.card-body { padding: 16px 18px; }
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.metric-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 16px;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.metric-card:hover { border-color: var(--g600); box-shadow: var(--shadow-md); }
+.metric-label {
+  font-size: 10px; color: var(--text3);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 8px; font-weight: 500;
+}
+.metric-value {
+  font-family: var(--font-display);
+  font-size: 36px; color: var(--g800); line-height: 1;
+}
+.metric-sub { font-size: 10px; color: var(--text3); margin-top: 6px; font-weight: 300; }
+
+.badge {
+  display: inline-block; font-size: 9px;
+  padding: 2px 9px; border-radius: 20px;
+  font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.badge-good    { background: var(--g100); color: var(--g800); }
+.badge-watch   { background: var(--a100); color: var(--a800); }
+.badge-concern { background: var(--r100); color: var(--r800); }
+.badge-urgent  { background: var(--r100); color: var(--r800); }
+.badge-soon    { background: var(--a100); color: var(--a800); }
+.badge-upcoming{ background: var(--g100); color: var(--g800); }
+
+.btn-primary {
+  background: var(--g800); color: var(--g200);
+  border: none; border-radius: var(--radius-sm);
+  padding: 9px 18px; font-size: 11.5px; font-weight: 400;
+  letter-spacing: 0.03em; transition: background 0.15s;
+  font-family: var(--font-body);
+}
+.btn-primary:hover { background: var(--g700); }
+.btn-ghost {
+  background: none; border: 0.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 7px 15px; font-size: 11.5px;
+  color: var(--text2); font-weight: 400;
+  transition: all 0.15s; font-family: var(--font-body);
+}
+.btn-ghost:hover { border-color: var(--g600); color: var(--g700); }
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+.dash-cell-wide { grid-column: span 2; }
+.dash-cell-full { grid-column: span 3; }
+
+.activity-feed { display: flex; flex-direction: column; }
+.activity-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 0; border-bottom: 0.5px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 10.5px; color: white; font-weight: 500; margin-top: 1px;
+}
+.activity-text { flex: 1; }
+.activity-who { font-size: 11.5px; font-weight: 500; color: var(--text1); }
+.activity-what { font-size: 11.5px; font-weight: 300; color: var(--text2); }
+.activity-when { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+.weather-strip {
+  display: flex; gap: 8px; margin-bottom: 22px;
+  overflow-x: auto; padding-bottom: 4px;
+}
+.weather-day {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-md); padding: 10px 14px;
+  text-align: center; flex-shrink: 0; min-width: 72px;
+}
+.weather-day.today { border-color: var(--g600); background: var(--g50); }
+.w-day { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.w-icon { font-size: 20px; margin: 4px 0; }
+.w-temp { font-size: 12px; font-weight: 400; color: var(--text1); }
+.w-note { font-size: 9px; color: var(--a600); margin-top: 2px; font-weight: 400; }
+
+.alert-bar {
+  background: var(--r100); border: 0.5px solid #f5c4c4;
+  border-left: 3px solid var(--r600); border-radius: var(--radius-sm);
+  padding: 11px 15px; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 11px;
+}
+.alert-icon { font-size: 15px; }
+.alert-text { font-size: 11.5px; color: var(--r800); line-height: 1.55; font-weight: 300; }
+.alert-text strong { display: block; font-weight: 500; margin-bottom: 2px; }
+
+/* Orchard health snapshot grid */
+.dash-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+/* ============================================================
+   MAP SCREEN
+   ============================================================ */
+.map-layout {
+  display: grid; grid-template-columns: 1fr 350px;
+  gap: 20px; align-items: start;
+}
+.orchard-canvas {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);
+}
+.orchard-fence {
+  background: #ede7da; border: 2px dashed #c5bbaa;
+  border-radius: var(--radius-md); padding: 14px;
+}
+.map-legend {
+  display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text2); font-weight: 300; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+.orchard-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+}
+/* Map nodes — species-toned cards with health dot */
+.tree-node {
+  border-radius: var(--radius-sm);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 7px 4px 6px;
+  font-size: 10px; font-weight: 400;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 1.5px solid transparent;
+  line-height: 1.3; text-align: center;
+  min-height: 62px;
+  font-family: var(--font-body);
+  position: relative;
+  /* default fallback */
+  background: #e8efe0; color: #2d4a1e;
+}
+.tree-node:hover { transform: scale(1.05); box-shadow: var(--shadow-md); }
+.tree-node.selected {
+  border-color: var(--bark);
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(60,42,26,0.15);
+}
+.tree-node.add-slot {
+  background: transparent; border: 1.5px dashed var(--border2);
+  color: var(--text3); font-size: 18px; cursor: pointer; min-height: 62px;
+}
+.tree-node.add-slot:hover { background: var(--g100); border-color: var(--g600); color: var(--g700); }
+.tree-node-icon { font-size: 18px; line-height: 1; margin-bottom: 2px; }
+.tree-node-num  { font-size: 8px; opacity: 0.55; line-height: 1; }
+.tree-node-name { font-size: 9px; line-height: 1.25; margin-top: 1px; font-weight: 400; }
+
+.tree-detail-panel .card-header { background: var(--g800); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.detail-tree-name { font-family: var(--font-display); font-size: 17px; font-weight: 400; color: var(--g200); }
+.detail-tree-latin { font-size: 10px; color: #6a8e40; font-style: italic; margin-top: 3px; font-family: var(--font-display); }
+
+.detail-rows { display: flex; flex-direction: column; }
+.detail-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 0.5px solid var(--border); font-size: 12.5px;
+}
+.detail-row:last-child { border-bottom: none; }
+.dr-label { color: var(--text3); font-weight: 300; }
+.dr-value { font-weight: 400; color: var(--text1); text-align: right; }
+
+.obs-history { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.obs-item {
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 11.5px;
+}
+.obs-meta { display: flex; justify-content: space-between; color: var(--text3); font-size: 10px; margin-bottom: 3px; }
+.obs-note { color: var(--text2); line-height: 1.55; font-weight: 300; }
+
+/* ============================================================
+   TASKS SCREEN
+   ============================================================ */
+.tasks-layout { display: grid; grid-template-columns: 1fr 290px; gap: 20px; align-items: start; }
+.task-filters { display: flex; gap: 7px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-btn {
+  padding: 5px 14px; border-radius: 20px;
+  border: 0.5px solid var(--border2); background: var(--surface);
+  font-size: 10.5px; color: var(--text2); cursor: pointer;
+  letter-spacing: 0.03em; transition: all 0.15s; font-family: var(--font-body); font-weight: 400;
+}
+.filter-btn.active { background: var(--g800); color: var(--g200); border-color: var(--g800); }
+.task-list { display: flex; flex-direction: column; gap: 10px; }
+.task-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-left: 3px solid; border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 14px 16px; display: flex; align-items: flex-start; gap: 14px;
+  box-shadow: var(--shadow-sm); transition: opacity 0.2s;
+}
+.task-card.urgent   { border-left-color: var(--r600); }
+.task-card.soon     { border-left-color: var(--a600); }
+.task-card.upcoming { border-left-color: var(--g600); }
+.task-card.done     { border-left-color: #ccc; opacity: 0.5; }
+.task-check {
+  width: 21px; height: 21px; border-radius: 50%;
+  border: 1.5px solid var(--border2); background: none; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; color: white; font-size: 10px; margin-top: 2px;
+}
+.task-check.checked { background: var(--g600); border-color: var(--g600); }
+.task-title { font-size: 13px; font-weight: 500; color: var(--text1); margin-bottom: 4px; }
+.task-desc { font-size: 11.5px; color: var(--text2); line-height: 1.6; font-weight: 300; }
+.task-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.task-meta { font-size: 10.5px; color: var(--text3); font-weight: 300; }
+
+.task-sidebar-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.progress-ring-wrap { display: flex; align-items: center; gap: 16px; padding: 16px 18px; }
+.progress-label { font-size: 11.5px; color: var(--text2); font-weight: 300; }
+.progress-count { font-family: var(--font-display); font-size: 24px; color: var(--g800); }
+
+/* ============================================================
+   LOG SCREEN
+   ============================================================ */
+.log-layout { display: grid; grid-template-columns: 1fr 330px; gap: 20px; align-items: start; }
+.log-step-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 14px; box-shadow: var(--shadow-sm);
+}
+.log-step-header {
+  padding: 10px 16px; background: var(--surface2);
+  border-bottom: 0.5px solid var(--border);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--text3); font-weight: 500;
+}
+.log-step-body { padding: 16px; }
+
+/* Step 1 — orchard map layout for tree picker */
+.log-orchard-fence {
+  background: #ede7da; border: 1.5px dashed #c5bbaa;
+  border-radius: var(--radius-sm); padding: 10px;
+}
+.log-map-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.tree-pick {
+  border-radius: var(--radius-sm);
+  min-height: 56px; padding: 5px 3px;
+  border: 1.5px solid transparent;
+  background: #e8efe0; color: #2d4a1e;
+  font-size: 9px; cursor: pointer; text-align: center;
+  transition: all 0.15s; line-height: 1.3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--font-body); font-weight: 400;
+  position: relative;
+}
+.tree-pick.empty-slot {
+  background: transparent; border: 1.5px dashed #c5bbaa;
+  color: #c5bbaa; cursor: default; font-size: 16px;
+}
+.tree-pick:not(.empty-slot):hover { transform: scale(1.05); box-shadow: var(--shadow-sm); }
+.tree-pick.selected { border-color: var(--bark); transform: scale(1.06); box-shadow: 0 0 0 2px rgba(60,42,26,0.2); }
+.tree-pick-icon { font-size: 15px; line-height: 1; margin-bottom: 1px; }
+.tree-pick-num  { font-size: 7.5px; opacity: 0.55; line-height: 1; }
+.tree-pick-name { font-size: 8.5px; margin-top: 1px; font-weight: 400; line-height: 1.2; }
+
+.obs-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.obs-btn {
+  padding: 13px 8px; border: 0.5px solid var(--border);
+  border-radius: var(--radius-md); background: var(--surface2);
+  font-size: 11.5px; cursor: pointer; text-align: center;
+  color: var(--text1); transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  font-family: var(--font-body); font-weight: 400;
+}
+.obs-btn:hover { border-color: var(--g600); }
+.obs-btn.selected { background: var(--g100); border-color: var(--g600); }
+.obs-icon { font-size: 19px; }
+.obs-sub { font-size: 9px; color: var(--text3); font-weight: 300; }
+
+.field-group { margin-bottom: 12px; }
+.field-label {
+  font-size: 10px; color: var(--text3); letter-spacing: 0.06em;
+  text-transform: uppercase; display: block; margin-bottom: 5px; font-weight: 500;
+}
+.field-input, .field-select, .field-textarea {
+  width: 100%; padding: 9px 12px;
+  border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+  background: var(--surface2); font-family: var(--font-body);
+  font-size: 12.5px; color: var(--text1); transition: border-color 0.15s; font-weight: 300;
+}
+.field-input:focus, .field-select:focus, .field-textarea:focus { outline: none; border-color: var(--g600); }
+.field-textarea { min-height: 90px; resize: vertical; }
+.rating-row { display: flex; gap: 8px; }
+.rating-btn {
+  flex: 1; padding: 8px 4px; border: 0.5px solid var(--border2);
+  border-radius: var(--radius-sm); background: none;
+  font-family: var(--font-body); font-size: 10.5px; cursor: pointer;
+  color: var(--text2); transition: all 0.15s; font-weight: 400;
+}
+.rating-btn.sel-good    { background: var(--g100); border-color: var(--g600); color: var(--g800); }
+.rating-btn.sel-watch   { background: var(--a100); border-color: var(--a600); color: var(--a800); }
+.rating-btn.sel-concern { background: var(--r100); border-color: var(--r600); color: var(--r800); }
+.submit-btn {
+  width: 100%; padding: 13px;
+  background: var(--g800); color: var(--g200); border: none;
+  border-radius: var(--radius-md); font-family: var(--font-body);
+  font-size: 12.5px; font-weight: 400; letter-spacing: 0.04em; transition: background 0.15s;
+}
+.submit-btn:hover { background: var(--g700); }
+
+.recent-log-card .obs-entry {
+  padding: 11px 0; border-bottom: 0.5px solid var(--border); font-size: 11.5px;
+}
+.recent-log-card .obs-entry:last-child { border-bottom: none; }
+.obs-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.obs-type-tag { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3); font-weight: 500; }
+.obs-tree-ref { font-size: 10.5px; color: var(--g700); font-weight: 500; }
+.obs-user { font-size: 9px; color: var(--text3); }
+.obs-content { color: var(--text2); line-height: 1.55; font-weight: 300; }
+
+/* ============================================================
+   REGISTRY SCREEN
+   ============================================================ */
+.registry-layout { display: grid; grid-template-columns: 1fr 310px; gap: 20px; align-items: start; }
+.registry-table {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.reg-table-head {
+  display: grid;
+  grid-template-columns: 36px 1fr 120px 55px 80px 90px 75px 80px;
+  gap: 8px; padding: 10px 16px;
+  background: var(--surface2); border-bottom: 0.5px solid var(--border);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); font-weight: 500;
+}
+.reg-table-body { max-height: 520px; overflow-y: auto; }
+.reg-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 120px 55px 80px 90px 75px 80px;
+  gap: 8px; padding: 11px 16px;
+  border-bottom: 0.5px solid var(--border); align-items: center;
+  font-size: 11.5px; transition: background 0.12s;
+}
+.reg-row:last-child { border-bottom: none; }
+.reg-row:hover { background: var(--g50); }
+.reg-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 500; color: white;
+}
+.reg-name { font-weight: 500; color: var(--text1); }
+.reg-var { font-size: 10px; color: var(--text3); font-style: italic; font-weight: 300; }
+.reg-species { color: var(--text2); font-size: 10.5px; font-style: italic; font-weight: 300; }
+.reg-age { color: var(--text2); font-weight: 300; }
+.reg-root { color: var(--text2); font-size: 10.5px; font-weight: 300; }
+.reg-logged { font-size: 10.5px; color: var(--text3); font-weight: 300; }
+.reg-actions { display: flex; gap: 5px; }
+.reg-edit-btn {
+  font-size: 10px; padding: 3px 10px;
+  border: 0.5px solid var(--border2); border-radius: 20px;
+  background: none; color: var(--text2); cursor: pointer;
+  font-family: var(--font-body); font-weight: 400; transition: all 0.15s;
+  white-space: nowrap;
+}
+.reg-edit-btn:hover { border-color: var(--g600); color: var(--g700); }
+
+/* Edit modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  width: 480px; max-width: 95vw; max-height: 90vh;
+  overflow-y: auto; padding: 24px;
+}
+.modal-title { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--g800); margin-bottom: 4px; }
+.modal-sub { font-size: 11px; color: var(--text3); margin-bottom: 20px; font-weight: 300; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.btn-danger {
+  background: none; border: 0.5px solid #f7c1c1; color: var(--r600);
+  border-radius: var(--radius-sm); padding: 9px 16px;
+  font-size: 11.5px; font-family: var(--font-body); font-weight: 400;
+  cursor: pointer; transition: all 0.15s; margin-right: auto;
+}
+.btn-danger:hover { background: var(--r100); }
+
+.add-tree-form {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.add-form-header {
+  padding: 12px 16px; background: var(--surface2); border-bottom: 0.5px solid var(--border);
+}
+.add-form-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text3); font-weight: 500; }
+.add-form-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ============================================================
+   MOBILE NAV
+   ============================================================ */
+.mobile-nav {
+  display: none; background: var(--g900);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+}
+.mobile-nav-inner { display: flex; }
+.mob-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 4px; background: none; border: none;
+  font-family: var(--font-body); font-size: 9px; color: #4a6a28;
+  letter-spacing: 0.03em; cursor: pointer; transition: color 0.15s; font-weight: 400;
+}
+.mob-btn.active { color: var(--g200); }
+.mob-icon { font-size: 20px; }
+
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--g800); color: var(--g200);
+  padding: 10px 24px; border-radius: 30px;
+  font-size: 11.5px; letter-spacing: 0.03em;
+  opacity: 0; transition: all 0.3s;
+  pointer-events: none; z-index: 999; white-space: nowrap;
+  font-family: var(--font-body); font-weight: 400;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-cell-wide, .dash-cell-full { grid-column: span 1; }
+  .widget-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .mobile-nav { display: block; }
+  #app { height: 100dvh; }
+  .body-wrap { flex-direction: column; }
+  .main { flex: 1; overflow-y: auto; }
+  .main-inner { padding: 14px; }
+  .topbar { padding: 0 14px; }
+  .topbar-logo span { display: none; }
+  .map-layout, .tasks-layout, .log-layout, .registry-layout { grid-template-columns: 1fr; }
+  .reg-table-head, .reg-row { grid-template-columns: 30px 1fr 60px 80px 70px; }
+  .reg-species, .reg-root, .reg-logged { display: none; }
+  .obs-type-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .widget-grid { grid-template-columns: repeat(2, 1fr); }
+  .topbar-season { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="topbar-logo">The Orchard Book<span>Northwest Washington · Est. 2025</span></div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-season">🌧 Early Spring · March 2026</div>
+    <div class="user-switcher" id="user-switcher"></div>
+  </div>
+
+  <div class="body-wrap">
+    <nav class="sidebar">
+      <div class="sidebar-section">Overview</div>
+      <div class="sidebar-item active" onclick="showScreen('dashboard',this)"><span class="sidebar-icon">🏡</span>Dashboard</div>
+      <div class="sidebar-section">Orchard</div>
+      <div class="sidebar-item" onclick="showScreen('map',this)"><span class="sidebar-icon">🗺</span>Orchard Map</div>
+      <div class="sidebar-item" onclick="showScreen('registry',this)"><span class="sidebar-icon">🌳</span>Tree Registry</div>
+      <div class="sidebar-section">Field Work</div>
+      <div class="sidebar-item" onclick="showScreen('tasks',this)"><span class="sidebar-icon">📋</span>Seasonal Tasks</div>
+      <div class="sidebar-item" onclick="showScreen('log',this)"><span class="sidebar-icon">✏️</span>Log Observation</div>
+      <div class="sidebar-footer">
+        <strong>Firebase</strong>
+        <span id="fb-status">🟡 Connecting…</span>
+      </div>
+    </nav>
+
+    <main class="main">
+      <div class="main-inner">
+
+        <!-- DASHBOARD -->
+        <div class="screen active" id="screen-dashboard">
+          <div class="page-title">Good morning, <span id="greeting-name">Stacey</span></div>
+          <div class="page-sub">Sunday, March 15, 2026 · Early Spring · Green tip stage on most apples</div>
+
+          <div class="alert-bar">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-text">
+              <strong>Action needed this week</strong>
+              Copper fungicide spray window is open now (green tip stage). Peach leaf curl spray on Redhaven due before Mar 20. Fire blight risk elevated — wet forecast ahead.
+            </div>
+          </div>
+
+          <div class="weather-strip" id="weather-strip"></div>
+
+          <div class="widget-grid">
+            <div class="metric-card" onclick="showScreen('map', document.querySelector('.sidebar-item:nth-child(4)'))">
+              <div class="metric-label">Total trees</div>
+              <div class="metric-value" id="stat-total">—</div>
+              <div class="metric-sub" id="stat-total-sub">Loading…</div>
+            </div>
+            <div class="metric-card" onclick="scrollToSnapshot()">
+              <div class="metric-label">Healthy</div>
+              <div class="metric-value" style="color:var(--g600)" id="stat-healthy">—</div>
+              <div class="metric-sub" id="stat-healthy-sub">Loading…</div>
+            </div>
+            <div class="metric-card" onclick="showScreen('map', document.querySelector('.sidebar-item:nth-child(4)'))">
+              <div class="metric-label">Watch / Concern</div>
+              <div class="metric-value" style="color:var(--a600)" id="stat-watch">—</div>
+              <div class="metric-sub" id="stat-watch-sub">Loading…</div>
+            </div>
+            <div class="metric-card" onclick="showScreen('tasks', document.querySelector('.sidebar-item:nth-child(7)'))">
+              <div class="metric-label">Tasks this month</div>
+              <div class="metric-value" style="color:var(--r600)" id="stat-tasks">—</div>
+              <div class="metric-sub" id="stat-tasks-sub">Loading…</div>
+            </div>
+          </div>
+
+          <div class="dash-grid">
+            <div class="dash-cell-wide card">
+              <div class="card-header">
+                <div class="card-title">Recent family activity</div>
+                <button class="btn-ghost" onclick="showScreen('log', document.querySelector('.sidebar-item:nth-child(8)'))">+ Log observation</button>
+              </div>
+              <div class="card-body">
+                <div class="activity-feed" id="activity-feed"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="card-title">This week's tasks</div></div>
+              <div class="card-body" id="dash-tasks"></div>
+            </div>
+
+            <div class="dash-cell-full card" id="snapshot-card">
+              <div class="card-header">
+                <div class="card-title">Orchard health snapshot</div>
+                <span class="badge badge-good" id="snapshot-updated">Live</span>
+              </div>
+              <div class="card-body">
+                <div class="dash-snapshot-grid" id="dash-grid-mini"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAP -->
+        <div class="screen" id="screen-map">
+          <div class="page-title">Orchard Map</div>
+          <div class="page-sub">Tap a tree to view its profile and recent observations</div>
+          <div class="map-layout">
+            <div class="orchard-canvas">
+              <div class="map-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--g600)"></div>Healthy</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--a600)"></div>Watch</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--r600)"></div>Concern</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ddd;border:1px dashed #aaa"></div>Open slot</div>
+              </div>
+              <div class="orchard-fence">
+                <div class="orchard-grid" id="orchard-grid"></div>
+              </div>
+            </div>
+            <div class="tree-detail-panel card" id="tree-detail-panel">
+              <div class="card-header" style="background:var(--g800);border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
+                <div>
+                  <div class="detail-tree-name" id="dt-name">Select a tree</div>
+                  <div class="detail-tree-latin" id="dt-latin">Tap any tree on the map</div>
+                </div>
+                <span class="badge badge-good" id="dt-health" style="display:none"></span>
+              </div>
+              <div class="card-body">
+                <div class="detail-rows" id="dt-rows"></div>
+                <div id="dt-obs-section" style="display:none">
+                  <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text3);margin:14px 0 8px;font-weight:500">Recent observations</div>
+                  <div class="obs-history" id="dt-obs"></div>
+                </div>
+                <button class="submit-btn" id="dt-log-btn" style="display:none;margin-top:14px" onclick="goToLog()">+ Log observation for this tree</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASKS -->
+        <div class="screen" id="screen-tasks">
+          <div class="page-title">Seasonal Tasks</div>
+          <div class="page-sub">Spring 2026 · Northwest Washington orchard calendar</div>
+          <div class="tasks-layout">
+            <div>
+              <div class="task-filters" id="task-filters">
+                <button class="filter-btn active" onclick="filterTasks('all',this)">All</button>
+                <button class="filter-btn" onclick="filterTasks('urgent',this)">Urgent</button>
+                <button class="filter-btn" onclick="filterTasks('soon',this)">Due soon</button>
+                <button class="filter-btn" onclick="filterTasks('upcoming',this)">Upcoming</button>
+                <button class="filter-btn" onclick="filterTasks('done',this)">Completed</button>
+              </div>
+              <div class="task-list" id="task-list"></div>
+            </div>
+            <div>
+              <div class="task-sidebar-card">
+                <div class="card-header"><div class="card-title">March progress</div></div>
+                <div class="card-body">
+                  <div class="progress-ring-wrap">
+                    <svg width="56" height="56" viewBox="0 0 56 56">
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#EAF3DE" stroke-width="5"/>
+                      <circle cx="28" cy="28" r="22" fill="none" stroke="#639922" stroke-width="5"
+                        stroke-dasharray="138.2" stroke-dashoffset="138.2" stroke-linecap="round"
+                        transform="rotate(-90 28 28)" id="progress-circle"/>
+                    </svg>
+                    <div>
+                      <div class="progress-count"><span id="done-count">0</span>/<span id="total-count">0</span></div>
+                      <div class="progress-label">tasks done</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="task-sidebar-card card" style="margin-top:16px">
+                <div class="card-header"><div class="card-title">Key dates · your trees</div></div>
+                <div class="card-body" style="font-size:11.5px;display:flex;flex-direction:column;gap:11px;font-weight:300">
+                  <div><div style="color:var(--r600);font-weight:500;font-size:11px">Mar 15–25</div><div style="color:var(--text2)">Copper fungicide window — apples, pears, cherries</div></div>
+                  <div><div style="color:var(--r600);font-weight:500;font-size:11px">Before Mar 20</div><div style="color:var(--text2)">Final peach leaf curl spray — peaches</div></div>
+                  <div><div style="color:var(--a600);font-weight:500;font-size:11px">By Apr 1</div><div style="color:var(--text2)">Spring fertilizer application — all trees</div></div>
+                  <div><div style="color:var(--a600);font-weight:500;font-size:11px">Late April</div><div style="color:var(--text2)">Codling moth traps — apples</div></div>
+                  <div><div style="color:var(--g600);font-weight:500;font-size:11px">Late May–June</div><div style="color:var(--text2)">Fruit thinning after June drop — apples, pears, plums</div></div>
+                  <div><div style="color:var(--g600);font-weight:500;font-size:11px">June–July</div><div style="color:var(--text2)">Cherry harvest — Lapins, Rainier, Bing</div></div>
+                  <div><div style="color:var(--g600);font-weight:500;font-size:11px">August</div><div style="color:var(--text2)">Peach & early apple harvest window</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOG -->
+        <div class="screen" id="screen-log">
+          <div class="page-title">Log Observation</div>
+          <div class="page-sub">Record what you see in the orchard — guided inputs, quick to complete</div>
+          <div class="log-layout">
+            <div>
+              <div class="log-step-card">
+                <div class="log-step-header">Step 1 — Select your tree</div>
+                <div class="log-step-body">
+                  <div class="log-orchard-fence">
+                    <div class="log-map-grid" id="log-tree-grid"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="log-step-card">
+                <div class="log-step-header">Step 2 — Observation type</div>
+                <div class="log-step-body">
+                  <div class="obs-type-grid">
+                    <button class="obs-btn" onclick="selectObs('growth',this)"><span class="obs-icon">🌿</span>Growth<span class="obs-sub">vigor & shoots</span></button>
+                    <button class="obs-btn" onclick="selectObs('fruit',this)"><span class="obs-icon">🍎</span>Fruit<span class="obs-sub">size, count, drop</span></button>
+                    <button class="obs-btn" onclick="selectObs('pest',this)"><span class="obs-icon">🐛</span>Pest<span class="obs-sub">insects & damage</span></button>
+                    <button class="obs-btn" onclick="selectObs('disease',this)"><span class="obs-icon">🍄</span>Disease<span class="obs-sub">spots & lesions</span></button>
+                    <button class="obs-btn" onclick="selectObs('work',this)"><span class="obs-icon">✂️</span>Work done<span class="obs-sub">pruning, spray</span></button>
+                    <button class="obs-btn" onclick="selectObs('general',this)"><span class="obs-icon">📝</span>General<span class="obs-sub">notes</span></button>
+                  </div>
+                </div>
+              </div>
+              <div class="log-step-card">
+                <div class="log-step-header">Step 3 — Details</div>
+                <div class="log-step-body" id="log-fields-body">
+                  <div style="font-size:11.5px;color:var(--text3);font-weight:300">Select a tree and observation type above to see guided fields.</div>
+                </div>
+              </div>
+              <button class="submit-btn" onclick="submitLog()">Save observation →</button>
+            </div>
+            <div>
+              <div class="card recent-log-card">
+                <div class="card-header"><div class="card-title">Recent observations</div></div>
+                <div class="card-body" id="recent-obs-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REGISTRY -->
+        <div class="screen" id="screen-registry">
+          <div class="page-title">Tree Registry</div>
+          <div class="page-sub" id="registry-sub">Loading trees…</div>
+          <div class="registry-layout">
+            <div>
+              <div class="registry-table">
+                <div class="reg-table-head">
+                  <div>#</div><div>Name & varietal</div><div>Species</div><div>Age</div><div>Rootstock</div><div>Stage</div><div>Last log</div><div>Actions</div>
+                </div>
+                <div class="reg-table-body" id="reg-table-body"></div>
+              </div>
+            </div>
+            <div>
+              <div class="add-tree-form">
+                <div class="add-form-header"><div class="add-form-title">Register new tree</div></div>
+                <div class="add-form-body">
+                  <div class="field-group"><label class="field-label">Common name</label><input class="field-input" type="text" placeholder="e.g. Honeycrisp Apple" id="new-name"></div>
+                  <div class="field-group"><label class="field-label">Varietal / cultivar</label><input class="field-input" type="text" placeholder="e.g. Honeycrisp" id="new-varietal"></div>
+                  <div class="field-group"><label class="field-label">Species</label>
+                    <select class="field-select" id="new-species">
+                      <option>Malus domestica (Apple)</option>
+                      <option>Pyrus communis (European Pear)</option>
+                      <option>Pyrus pyrifolia (Asian Pear)</option>
+                      <option>Prunus persica (Peach)</option>
+                      <option>Prunus avium (Cherry)</option>
+                      <option>Prunus domestica (Plum)</option>
+                      <option>Prunus salicina (Japanese Plum)</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  <div class="field-group"><label class="field-label">Year planted</label><input class="field-input" type="number" placeholder="e.g. 2019" id="new-year"></div>
+                  <div class="field-group"><label class="field-label">Rootstock</label><input class="field-input" type="text" placeholder="e.g. M.9, OHxF 87" id="new-root"></div>
+                  <div class="field-group"><label class="field-label">Grid position (1–24)</label><input class="field-input" type="number" min="1" max="24" placeholder="Position on map" id="new-pos"></div>
+                  <div class="field-group"><label class="field-label">Initial health</label>
+                    <div class="rating-row">
+                      <button class="rating-btn sel-good" onclick="selectReg(this,'good')">Good</button>
+                      <button class="rating-btn" onclick="selectReg(this,'watch')">Watch</button>
+                      <button class="rating-btn" onclick="selectReg(this,'concern')">Concern</button>
+                    </div>
+                  </div>
+                  <button class="submit-btn" onclick="addTree()">Register tree →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mob-btn active" onclick="showScreen('dashboard',this)"><span class="mob-icon">🏡</span>Home</button>
+      <button class="mob-btn" onclick="showScreen('map',this)"><span class="mob-icon">🗺</span>Map</button>
+      <button class="mob-btn" onclick="showScreen('tasks',this)"><span class="mob-icon">📋</span>Tasks</button>
+      <button class="mob-btn" onclick="showScreen('log',this)"><span class="mob-icon">✏️</span>Log</button>
+      <button class="mob-btn" onclick="showScreen('registry',this)"><span class="mob-icon">🌳</span>Trees</button>
+    </div>
+  </nav>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <div class="modal-title">Edit Tree</div>
+    <div class="modal-sub" id="edit-modal-sub">Update the details for this tree</div>
+    <input type="hidden" id="edit-tree-id">
+    <div class="field-group"><label class="field-label">Common name</label><input class="field-input" type="text" id="edit-name"></div>
+    <div class="field-group"><label class="field-label">Varietal / cultivar</label><input class="field-input" type="text" id="edit-varietal"></div>
+    <div class="field-group"><label class="field-label">Species</label>
+      <select class="field-select" id="edit-species">
+        <option>Malus domestica (Apple)</option>
+        <option>Pyrus communis (European Pear)</option>
+        <option>Pyrus pyrifolia (Asian Pear)</option>
+        <option>Prunus persica (Peach)</option>
+        <option>Prunus avium (Cherry)</option>
+        <option>Prunus domestica (Plum)</option>
+        <option>Prunus salicina (Japanese Plum)</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field-group"><label class="field-label">Year planted</label><input class="field-input" type="number" id="edit-year"></div>
+    <div class="field-group"><label class="field-label">Rootstock</label><input class="field-input" type="text" id="edit-root"></div>
+    <div class="field-group"><label class="field-label">Grid position (1–24)</label><input class="field-input" type="number" min="1" max="24" id="edit-pos"></div>
+    <div class="field-group"><label class="field-label">Phenological stage</label>
+      <select class="field-select" id="edit-stage">
+        <option>Dormant</option><option>Silver tip</option><option>Green tip</option>
+        <option>Half-inch green</option><option>Pink / White bud</option><option>Full bloom</option>
+        <option>Petal fall</option><option>Fruit development</option>
+      </select>
+    </div>
+    <div class="field-group"><label class="field-label">Health</label>
+      <div class="rating-row">
+        <button class="rating-btn" id="edit-h-good"  onclick="selectEditHealth('good')">Good</button>
+        <button class="rating-btn" id="edit-h-watch" onclick="selectEditHealth('watch')">Watch</button>
+        <button class="rating-btn" id="edit-h-concern" onclick="selectEditHealth('concern')">Concern</button>
+      </div>
+    </div>
+    <div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="edit-notes" style="min-height:70px"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="submit-btn" style="flex:1" onclick="saveTreeEdit()">Save changes →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Observation edit modal -->
+<div class="modal-overlay" id="edit-obs-modal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">Edit Observation</div>
+    <div class="modal-sub">Only the notes, date, and type can be changed</div>
+    <div class="field-group" style="margin-top:16px">
+      <label class="field-label">Observation date</label>
+      <input class="field-input" type="date" id="edit-obs-date">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Observation type</label>
+      <select class="field-select" id="edit-obs-type">
+        <option value="growth">Growth</option>
+        <option value="fruit">Fruit</option>
+        <option value="pest">Pest</option>
+        <option value="disease">Disease</option>
+        <option value="work">Work done</option>
+        <option value="general">General</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Notes</label>
+      <textarea class="field-textarea" id="edit-obs-notes" style="min-height:100px"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeEditObsModal()">Cancel</button>
+      <button class="submit-btn" style="flex:1" onclick="saveEditObs()">Save changes →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   DATA LAYER — no seed data, Firebase-first with empty fallback
+   ============================================================ */
+const DB = {
+  users: [
+    { id:'stacey', name:'Stacey', initials:'S',  color:'#639922', role:'admin' },
+    { id:'kevin',  name:'Kevin',  initials:'K',  color:'#BA7517', role:'admin' },
+    { id:'sara',   name:'Sara',   initials:'Sa', color:'#1D9E75', role:'member' },
+    { id:'sophia', name:'Sophia', initials:'So', color:'#7F77DD', role:'member' },
+  ],
+
+  trees: [],        // populated from Firestore
+  tasks: [],        // populated from Firestore
+  observations: [], // populated from Firestore
+
+  // Tasks seeded once if Firestore tasks collection is empty
+  defaultTasks: [
+    { id:'tk1', title:'Apply copper fungicide spray', description:'Fire blight prevention window is open now — apply at green tip to pink stage on all apples, pears, and cherries. Mix at 3 tbsp/gal and spray to runoff. Wet NW spring forecast increases urgency significantly.', urgency:'urgent', due:'Mar 15–25', trees:'All apples, pears, cherries', estMin:50, done:false, category:'spray' },
+    { id:'tk2', title:'Finish dormant pruning — pears', description:'Complete dormant pruning on all pear trees before bud swell advances further. Prioritize crossing branches, downward growth, and water sprouts. Do not remove more than 25% of canopy in one season.', urgency:'urgent', due:'By Mar 18', trees:'All pear trees', estMin:120, done:false, category:'prune' },
+    { id:'tk3', title:'Peach leaf curl — final spray window', description:'Apply lime sulfur or fixed copper on all peach trees before buds break. This is the last opportunity until next dormancy season. Monitor peach trees closely for bud swell progression.', urgency:'urgent', due:'Before Mar 20', trees:'All peach trees', estMin:25, done:false, category:'spray' },
+    { id:'tk4', title:'Apply balanced spring fertilizer', description:'NW soils are often nitrogen-deficient in spring. Apply 10-10-10 fertilizer at the drip line once soil temps exceed 50°F. Avoid high-nitrogen formulas on pears — it increases fire blight susceptibility.', urgency:'soon', due:'By Apr 1', trees:'All trees', estMin:60, done:false, category:'fertilize' },
+    { id:'tk5', title:'Cherry dormant oil spray', description:'Apply horticultural oil to all cherry trees to smother overwintering scale, aphid eggs, and mites. Best applied on a mild dry day (above 40°F) before bud break. Thorough coverage is essential.', urgency:'soon', due:'Before bud break', trees:'All cherry trees', estMin:30, done:false, category:'spray' },
+    { id:'tk6', title:'Place codling moth pheromone traps', description:'Set pheromone traps in all apple trees by pink stage. NW Washington emergence typically late April when sustained temps exceed 50°F. Use one trap per 4 trees minimum, check weekly.', urgency:'upcoming', due:'Late April', trees:'All apple trees', estMin:30, done:false, category:'monitor' },
+    { id:'tk7', title:'Apple maggot barrier bags / traps', description:'Apply Surround kaolin clay or hang red sticky sphere traps in apples by June. Apple maggot is a significant pest in western Washington — early intervention is key to fruit quality.', urgency:'upcoming', due:'Early June', trees:'All apple trees', estMin:60, done:false, category:'monitor' },
+    { id:'tk8', title:'Fruit thinning after June drop', description:'Thin apples and pears to 1 fruit per spur at 6 inch spacing, plums to 2–3 inches. Critical for fruit size, quality, and preventing biennial bearing. This is the highest-yield intervention in the orchard year.', urgency:'upcoming', due:'Late May–June', trees:'All apples, pears, plums', estMin:240, done:false, category:'thin' },
+    { id:'tk9', title:'Cherry harvest — Lapins, Rainier, Bing', description:'Monitor cherries closely for ripeness: full color, slightly soft, sweet taste, brown seeds. Harvest promptly when ready — cherries do not continue ripening off the tree. Watch for bird pressure.', urgency:'upcoming', due:'June–July', trees:'All cherry trees', estMin:120, done:false, category:'harvest' },
+    { id:'tk10', title:'Summer pruning — water sprouts', description:'Remove vigorous upright water sprouts from all trees in summer. This improves light penetration, reduces disease pressure, and redirects energy to fruit. Do not summer-prune peaches heavily.', urgency:'upcoming', due:'July–August', trees:'All trees', estMin:90, done:false, category:'prune' },
+    { id:'tk11', title:'Peach and plum harvest window', description:'Monitor peaches and plums for ripeness: background color changes from green to yellow/cream, fruit softens at the tip, and releases from spur with gentle twist. Taste-test before full harvest.', urgency:'upcoming', due:'August', trees:'All peach and plum trees', estMin:90, done:false, category:'harvest' },
+    { id:'tk12', title:'Fall cleanup — remove all dropped fruit', description:'Remove all fallen fruit from the orchard floor promptly throughout the season, and thoroughly after harvest. Dropped fruit is the primary overwintering site for codling moth, brown rot, and apple maggot.', urgency:'upcoming', due:'Ongoing fall', trees:'All trees', estMin:60, done:false, category:'other' },
+  ],
+
+  async getTrees() {
+    if (!window._db) return this.trees;
+    try {
+      const snap = await window._fs.getDocs(window._fs.collection(window._db, 'trees'));
+      if (snap.empty) return [];
+      const remote = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      this.trees = remote;
+      return remote;
+    } catch(e) { console.warn('getTrees:', e); return this.trees; }
+  },
+
+  async getTree(id) {
+    if (!window._db) return this.trees.find(t => t.id === id);
+    try {
+      const snap = await window._fs.getDoc(window._fs.doc(window._db, 'trees', id));
+      if (snap.exists()) return { id: snap.id, ...snap.data() };
+    } catch(e) { console.warn('getTree:', e); }
+    return this.trees.find(t => t.id === id);
+  },
+
+  async getTasks() {
+    if (!window._db) return this.defaultTasks;
+    try {
+      const snap = await window._fs.getDocs(window._fs.collection(window._db, 'tasks'));
+      // Filter to only valid task documents (must have a title field)
+      const validDocs = snap.docs.filter(d => d.data().title);
+      if (validDocs.length === 0) {
+        // Firestore tasks collection is empty or corrupt — seed it with defaultTasks
+        console.log('Seeding default tasks into Firestore…');
+        const writes = this.defaultTasks.map(task => {
+          const { id, ...payload } = task;
+          return window._fs.setDoc(
+            window._fs.doc(window._db, 'tasks', id),
+            { ...payload, createdAt: window._fs.serverTimestamp() }
+          );
+        });
+        await Promise.all(writes);
+        this.tasks = [...this.defaultTasks];
+        return this.tasks;
+      }
+      const remote = validDocs.map(d => ({ id: d.id, ...d.data() }));
+      this.tasks = remote;
+      return remote;
+    } catch(e) { console.warn('getTasks:', e); return this.defaultTasks; }
+  },
+
+  async getObservations(treeId) {
+    if (!window._db) return [];
+    try {
+      const snap = await window._fs.getDocs(window._fs.collection(window._db, 'observations'));
+      let remote = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      remote.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+      if (treeId) remote = remote.filter(o => o.treeId === treeId);
+      return remote;
+    } catch(e) { console.warn('getObservations:', e); return []; }
+  },
+
+  async saveObservation(obs) {
+    if (!window._db) return obs;
+    try {
+      const { id:_, createdAt:__, ...payload } = obs;
+      const ref = await window._fs.addDoc(window._fs.collection(window._db,'observations'), { ...payload, createdAt: window._fs.serverTimestamp() });
+      obs.id = ref.id;
+    } catch(e) { console.error('saveObservation:', e); }
+    return obs;
+  },
+
+  async updateTask(id, data) {
+    const task = this.tasks.find(t => t.id === id);
+    if (task) Object.assign(task, data);
+    if (!window._db) return task;
+    try { await window._fs.setDoc(window._fs.doc(window._db,'tasks',id), data, { merge:true }); } catch(e) { console.error('updateTask:', e); }
+    return task;
+  },
+
+  async addTree(tree) {
+    if (!window._db) { this.trees.push(tree); return tree; }
+    try {
+      const { id:_, ...payload } = tree;
+      const ref = await window._fs.addDoc(window._fs.collection(window._db,'trees'), { ...payload, createdAt: window._fs.serverTimestamp() });
+      tree.id = ref.id;
+      this.trees.push(tree);
+    } catch(e) { console.error('addTree:', e); }
+    return tree;
+  },
+
+  async updateTree(id, data) {
+    const idx = this.trees.findIndex(t => t.id === id);
+    if (idx >= 0) Object.assign(this.trees[idx], data);
+    if (!window._db) return;
+    try { await window._fs.setDoc(window._fs.doc(window._db,'trees',id), data, { merge:true }); } catch(e) { console.error('updateTree:', e); }
+  },
+  async updateObservation(id, data) {
+    const idx = this.observations.findIndex(o => o.id === id);
+    if (idx >= 0) Object.assign(this.observations[idx], data);
+    if (!window._db) return;
+    try { await window._fs.setDoc(window._fs.doc(window._db,'observations',id), data, { merge:true }); }
+    catch(e) { console.error('updateObservation:', e); }
+  },
+
+  async deleteObservation(id) {
+    this.observations = this.observations.filter(o => o.id !== id);
+    if (!window._db) return;
+    try { await window._fs.deleteDoc(window._fs.doc(window._db,'observations',id)); }
+    catch(e) { console.error('deleteObservation:', e); }
+  },
+};
+
+/* ============================================================
+   SPECIES → ICON / PALETTE
+   ============================================================ */
+function speciesInfo(species) {
+  const s = (species || '').toLowerCase();
+  if (s.includes('malus') || s.includes('apple'))
+    return { icon:'🍎', cls:'spc-apple', label:'Apple' };
+  if (s.includes('pyrus pyrifolia') || s.includes('asian pear'))
+    return { icon:'🍐', cls:'spc-pear', label:'Asian Pear' };
+  if (s.includes('pyrus') || s.includes('pear'))
+    return { icon:'🍐', cls:'spc-pear', label:'Pear' };
+  if (s.includes('persica') || s.includes('peach'))
+    return { icon:'🍑', cls:'spc-peach', label:'Peach' };
+  if (s.includes('avium') || s.includes('cherry'))
+    return { icon:'🍒', cls:'spc-cherry', label:'Cherry' };
+  if (s.includes('prunus') || s.includes('plum'))
+    return { icon:'🟣', cls:'spc-plum', label:'Plum' };
+  return { icon:'🌳', cls:'spc-other', label:'Other' };
+}
+
+function healthDotClass(health) {
+  return health === 'watch' ? 'hd-watch' : health === 'concern' ? 'hd-concern' : 'hd-healthy';
+}
+const state = {
+  currentUser: DB.users[0],
+  selectedTree: null,
+  selectedObsType: null,
+  selectedLogTree: null,
+  taskFilter: 'all',
+  editHealth: 'healthy',
+  editingObsId: null,
+};
+
+/* ============================================================
+   USER SWITCHER
+   ============================================================ */
+function buildUserSwitcher() {
+  const wrap = document.getElementById('user-switcher');
+  DB.users.forEach(u => {
+    const el = document.createElement('div');
+    el.className = 'user-avatar' + (u.id === state.currentUser.id ? ' active' : '');
+    el.style.background = u.color;
+    el.textContent = u.initials;
+    el.title = u.name;
+    el.onclick = () => {
+      state.currentUser = u;
+      document.querySelectorAll('.user-avatar').forEach((a,i) => a.classList.toggle('active', DB.users[i].id === u.id));
+      document.getElementById('greeting-name').textContent = u.name;
+      showToast('Switched to ' + u.name);
+    };
+    wrap.appendChild(el);
+  });
+}
+
+/* ============================================================
+   SCREEN ROUTING
+   ============================================================ */
+function showScreen(name, triggerEl) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.sidebar-item,.mob-btn').forEach(el => el.classList.remove('active'));
+  if (triggerEl) triggerEl.classList.add('active');
+}
+
+function scrollToSnapshot() {
+  const el = document.getElementById('snapshot-card');
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ============================================================
+   WEATHER (mock)
+   ============================================================ */
+function buildWeather() {
+  const days = [
+    {d:'Sun',icon:'🌧',hi:48,lo:38,note:'Rain'},
+    {d:'Mon',icon:'🌧',hi:50,lo:40,note:'Spray ok?'},
+    {d:'Tue',icon:'⛅',hi:53,lo:39,note:'Partly cloudy'},
+    {d:'Wed',icon:'🌤',hi:56,lo:41,note:'Good spray day'},
+    {d:'Thu',icon:'☀️',hi:58,lo:42,note:'Best spray day'},
+    {d:'Fri',icon:'🌥',hi:54,lo:40,note:''},
+    {d:'Sat',icon:'🌧',hi:49,lo:38,note:'Rain'},
+  ];
+  const strip = document.getElementById('weather-strip');
+  days.forEach((d,i) => {
+    const el = document.createElement('div');
+    el.className = 'weather-day' + (i===0?' today':'');
+    el.innerHTML = `<div class="w-day">${d.d}</div><div class="w-icon">${d.icon}</div><div class="w-temp">${d.hi}° / ${d.lo}°</div>${d.note?`<div class="w-note">${d.note}</div>`:''}`;
+    strip.appendChild(el);
+  });
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function buildDashboard() {
+  buildActivityFeed();
+  buildDashTasks();
+  buildDashMiniGrid();
+  buildDashStats();
+}
+
+function buildDashStats() {
+  DB.getTrees().then(trees => {
+    const healthy = trees.filter(t => t.health === 'healthy').length;
+    const atRisk  = trees.filter(t => t.health === 'watch' || t.health === 'concern').length;
+    const species = [...new Set(trees.map(t => t.species))].length;
+    document.getElementById('stat-total').textContent = trees.length || '—';
+    document.getElementById('stat-total-sub').textContent = trees.length ? `${species} species` : 'No trees yet';
+    document.getElementById('stat-healthy').textContent = healthy || '—';
+    document.getElementById('stat-healthy-sub').textContent = trees.length ? `${Math.round(healthy/trees.length*100)}% of orchard` : '';
+    document.getElementById('stat-watch').textContent = atRisk || '0';
+    const watchTrees = trees.filter(t => t.health !== 'healthy').map(t => '#'+t.gridPosition).join(', ');
+    document.getElementById('stat-watch-sub').textContent = watchTrees || 'All trees healthy';
+  });
+  DB.getTasks().then(tasks => {
+    const urgent = tasks.filter(t => !t.done && (t.urgency==='urgent'||t.urgency==='soon')).length;
+    document.getElementById('stat-tasks').textContent = urgent;
+    document.getElementById('stat-tasks-sub').textContent = urgent ? `${tasks.filter(t=>!t.done&&t.urgency==='urgent').length} urgent` : 'All clear';
+  });
+}
+
+function buildActivityFeed() {
+  const feed = document.getElementById('activity-feed');
+  feed.innerHTML = '';
+  DB.getObservations().then(obs => {
+    if (!obs.length) {
+      feed.innerHTML = '<div style="font-size:11.5px;color:var(--text3);padding:12px 0;font-weight:300">No observations logged yet. Head out to the orchard and tap Log to get started.</div>';
+      return;
+    }
+    obs.slice(0,5).forEach(o => {
+      const u = DB.users.find(u => u.id === o.loggedBy) || DB.users[0];
+      const t = DB.trees.find(t => t.id === o.treeId);
+      const typeLabel = {growth:'growth observation',fruit:'fruit observation',pest:'pest sighting',disease:'disease concern',work:'work completed',general:'note'}[o.type]||'observation';
+      const el = document.createElement('div');
+      el.className = 'activity-item';
+      const when = o.displayDate || (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (o.createdAt||''));
+      el.innerHTML = `
+        <div class="activity-dot" style="background:${u.color}">${u.initials}</div>
+        <div class="activity-text">
+          <div class="activity-who">${u.name} logged a ${typeLabel}</div>
+          <div class="activity-what">${t?t.fullName:'Unknown tree'} — ${(o.notes||'').substring(0,80)}${(o.notes||'').length>80?'…':''}</div>
+          <div class="activity-when">${when}</div>
+        </div>`;
+      feed.appendChild(el);
+    });
+  });
+}
+
+function buildDashTasks() {
+  const wrap = document.getElementById('dash-tasks');
+  wrap.innerHTML = '';
+  DB.getTasks().then(tasks => {
+    const urgent = tasks.filter(t => !t.done && (t.urgency==='urgent'||t.urgency==='soon'));
+    if (!urgent.length) { wrap.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">No urgent tasks — orchard is on track.</div>'; return; }
+    urgent.forEach(t => {
+      const el = document.createElement('div');
+      el.style.cssText = 'padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;gap:10px;align-items:flex-start;cursor:pointer';
+      el.innerHTML = `
+        <div style="width:7px;height:7px;border-radius:50%;background:${t.urgency==='urgent'?'var(--r600)':'var(--a600)'};margin-top:5px;flex-shrink:0"></div>
+        <div>
+          <div style="font-size:12.5px;font-weight:500;color:var(--text1);margin-bottom:2px">${t.title}</div>
+          <div style="font-size:10.5px;color:var(--text3);font-weight:300">${t.due} · ${t.trees}</div>
+        </div>`;
+      el.onclick = () => showScreen('tasks', document.querySelector('.sidebar-item:nth-child(7)'));
+      wrap.appendChild(el);
+    });
+  });
+}
+
+function buildDashMiniGrid() {
+  const grid = document.getElementById('dash-grid-mini');
+  grid.innerHTML = '';
+  DB.getTrees().then(trees => {
+    if (!trees.length) {
+      grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);grid-column:span 4;font-weight:300;padding:8px 0">No trees registered yet. Add your first tree in the Tree Registry.</div>';
+      return;
+    }
+    // Build 6 rows of 4, displayed bottom-to-top (row 6 = top of grid = back of orchard)
+    const rows = [];
+    for (let row = 0; row < 6; row++) {
+      const cells = [];
+      for (let col = 0; col < 4; col++) cells.push(row * 4 + col + 1);
+      rows.push(cells);
+    }
+    [...rows].reverse().forEach(rowPositions => {
+      rowPositions.forEach(pos => {
+        const tree = trees.find(t => t.gridPosition === pos);
+        const el = document.createElement('div');
+        if (tree) {
+          const sp = speciesInfo(tree.species);
+          const hd = healthDotClass(tree.health);
+          el.className = sp.cls;
+          el.style.cssText = `border-radius:var(--radius-sm);padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.15s;min-height:52px;text-align:center;position:relative;`;
+          el.innerHTML = `<div class="health-dot ${hd}" style="position:absolute;top:4px;right:4px"></div><span style="font-size:16px;line-height:1">${sp.icon}</span><span style="font-size:8px;opacity:0.55;line-height:1;margin-top:1px">${pos}</span><span style="font-size:8.5px;font-weight:400;margin-top:1px;line-height:1.2">${tree.name}</span>`;
+          el.onmouseenter = () => el.style.transform = 'scale(1.05)';
+          el.onmouseleave = () => el.style.transform = '';
+          el.onclick = () => { showScreen('map', document.querySelector('.sidebar-item:nth-child(4)')); setTimeout(()=>selectMapTree(tree.id),50); };
+        } else {
+          el.style.cssText = 'background:transparent;border:1px dashed #c5bbaa;border-radius:var(--radius-sm);min-height:52px;display:flex;align-items:center;justify-content:center;';
+          el.innerHTML = `<span style="font-size:8px;color:#c5bbaa">${pos}</span>`;
+        }
+        grid.appendChild(el);
+      });
+    });
+  });
+}
+
+/* ============================================================
+   ORCHARD MAP
+   ============================================================ */
+function buildMap() {
+  const grid = document.getElementById('orchard-grid');
+  grid.innerHTML = '';
+  DB.getTrees().then(trees => {
+    for (let pos = 1; pos <= 24; pos++) {
+      const tree = trees.find(t => t.gridPosition === pos);
+      const el = document.createElement('div');
+      if (tree) {
+        const sp = speciesInfo(tree.species);
+        el.className = 'tree-node ' + sp.cls;
+        el.title = tree.fullName;
+        el.innerHTML = `
+          <div class="health-dot ${healthDotClass(tree.health)}"></div>
+          <span class="tree-node-icon">${sp.icon}</span>
+          <span class="tree-node-num">${pos}</span>
+          <span class="tree-node-name">${tree.name}</span>`;
+        el.onclick = () => selectMapTree(tree.id);
+      } else {
+        el.className = 'tree-node add-slot';
+        el.textContent = '+';
+        el.title = 'Position ' + pos + ' — tap to add tree';
+        el.onclick = () => showScreen('registry', document.querySelector('.sidebar-item:nth-child(5)'));
+      }
+      grid.appendChild(el);
+    }
+  });
+}
+
+function selectMapTree(treeId) {
+  DB.getTree(treeId).then(t => {
+    if (!t) return;
+    state.selectedTree = t;
+    document.querySelectorAll('.tree-node').forEach(n => n.classList.remove('selected'));
+    document.querySelectorAll('.tree-node').forEach(n => {
+      const num = n.querySelector('.tree-node-num');
+      if (num && parseInt(num.textContent) === t.gridPosition) n.classList.add('selected');
+    });
+    document.getElementById('dt-name').textContent = t.fullName;
+    document.getElementById('dt-latin').textContent = t.species + ' · ' + t.varietal;
+    const hb = document.getElementById('dt-health');
+    hb.style.display = 'inline-block';
+    hb.textContent = t.health==='healthy'?'Healthy':t.health==='watch'?'Watch':'Concern';
+    hb.className = 'badge badge-' + (t.health==='healthy'?'good':t.health==='watch'?'watch':'concern');
+    const age = new Date().getFullYear() - t.yearPlanted;
+    const pollStr = (!t.pollinators||t.pollinators[0]==='self'||!t.pollinators.length) ? 'Self-fertile' : t.pollinators.map(p=>{ const f=DB.trees.find(tr=>tr.id===p); return f?f.name:p; }).join(', ');
+    document.getElementById('dt-rows').innerHTML = `
+      <div class="detail-row"><span class="dr-label">Tree #</span><span class="dr-value">${t.gridPosition}</span></div>
+      <div class="detail-row"><span class="dr-label">Age</span><span class="dr-value">${age} years (planted ${t.yearPlanted})</span></div>
+      <div class="detail-row"><span class="dr-label">Rootstock</span><span class="dr-value">${t.rootstock||'Unknown'}</span></div>
+      <div class="detail-row"><span class="dr-label">Stage</span><span class="dr-value">${t.currentStage||'—'}</span></div>
+      <div class="detail-row"><span class="dr-label">Pollinators</span><span class="dr-value">${pollStr}</span></div>
+      <div class="detail-row"><span class="dr-label">Last logged</span><span class="dr-value">${t.lastLogged||'Never'}</span></div>
+      ${t.notes?`<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:4px"><span class="dr-label">Notes</span><span class="dr-value" style="text-align:left;font-weight:300;line-height:1.5">${t.notes}</span></div>`:''}
+    `;
+    DB.getObservations(t.id).then(obs => {
+      const sec = document.getElementById('dt-obs-section');
+      const obsDiv = document.getElementById('dt-obs');
+      if (obs.length) {
+        sec.style.display = 'block';
+        obsDiv.innerHTML = '';
+        obs.slice(0,3).forEach(o => {
+          const u = DB.users.find(u=>u.id===o.loggedBy)||DB.users[0];
+          const el = document.createElement('div');
+          el.className = 'obs-item';
+          const when = o.displayDate || (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}) : (o.createdAt||''));
+          el.innerHTML = `<div class="obs-meta"><span>${o.type}</span><span style="color:${u.color}">${u.name} · ${when}</span></div><div class="obs-note">${o.notes||''}</div>`;
+          obsDiv.appendChild(el);
+        });
+      } else { sec.style.display = 'none'; }
+    });
+    document.getElementById('dt-log-btn').style.display = 'block';
+  });
+}
+
+function goToLog() {
+  showScreen('log', document.querySelector('.sidebar-item:nth-child(8)'));
+  if (state.selectedTree) {
+    setTimeout(() => {
+      document.querySelectorAll('.tree-pick').forEach(p => {
+        if (p.dataset.treeid === state.selectedTree.id) {
+          p.classList.add('selected');
+          state.selectedLogTree = state.selectedTree;
+        }
+      });
+    }, 50);
+  }
+}
+
+/* ============================================================
+   TASKS
+   ============================================================ */
+function buildTasks() { renderTaskList(); }
+
+function renderTaskList() {
+  const list = document.getElementById('task-list');
+  list.innerHTML = '';
+  DB.getTasks().then(tasks => {
+    // Guard: skip any doc that's missing required fields
+    const validTasks = tasks.filter(t => t.title && t.urgency);
+    const filtered = state.taskFilter==='all' ? validTasks :
+                     state.taskFilter==='done' ? validTasks.filter(t=>t.done) :
+                     validTasks.filter(t=>!t.done && t.urgency===state.taskFilter);
+    if (!filtered.length) {
+      list.innerHTML = '<div style="font-size:11.5px;color:var(--text3);padding:16px 0;font-weight:300">No tasks in this category.</div>';
+    }
+    filtered.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'task-card ' + (t.done?'done':t.urgency);
+      el.id = 'tc-' + t.id;
+      el.innerHTML = `
+        <div class="task-check ${t.done?'checked':''}" onclick="toggleTask('${t.id}',this)">${t.done?'✓':''}</div>
+        <div style="flex:1">
+          <div class="task-title">${t.title}</div>
+          <div class="task-desc">${t.description}</div>
+          <div class="task-footer">
+            <span class="badge badge-${t.done?'good':t.urgency}">${t.done?'Done':t.urgency}</span>
+            <span class="task-meta">${t.due} · ${t.trees} · ~${t.estMin} min</span>
+            ${t.completedBy?`<span class="task-meta">by ${t.completedBy}</span>`:''}
+          </div>
+        </div>`;
+      list.appendChild(el);
+    });
+    updateDoneCount(validTasks);
+  });
+}
+
+function filterTasks(filter, btn) {
+  state.taskFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTaskList();
+}
+
+function toggleTask(taskId, el) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.done = !task.done;
+  if (task.done) task.completedBy = state.currentUser.name;
+  DB.updateTask(taskId, { done: task.done, completedBy: task.completedBy || null });
+  el.classList.toggle('checked', task.done);
+  el.textContent = task.done ? '✓' : '';
+  const card = document.getElementById('tc-' + taskId);
+  if (card) card.className = 'task-card ' + (task.done ? 'done' : task.urgency);
+  updateDoneCount(DB.tasks.filter(t => t.title && t.urgency));
+  showToast(task.done ? 'Task marked complete ✓' : 'Task reopened');
+}
+
+function updateDoneCount(tasks) {
+  const done = tasks.filter(t=>t.done).length;
+  const total = tasks.length;
+  const dc = document.getElementById('done-count');
+  const tc = document.getElementById('total-count');
+  if (dc) dc.textContent = done;
+  if (tc) tc.textContent = total;
+  const circ = document.getElementById('progress-circle');
+  if (circ && total) {
+    const pct = done/total;
+    circ.setAttribute('stroke-dashoffset', (138.2*(1-pct)).toFixed(1));
+  }
+}
+
+/* ============================================================
+   LOG OBSERVATION
+   ============================================================ */
+function buildLog() {
+  const grid = document.getElementById('log-tree-grid');
+  grid.innerHTML = '';
+  DB.getTrees().then(trees => {
+    for (let pos = 1; pos <= 24; pos++) {
+      const tree = trees.find(t => t.gridPosition === pos);
+      const el = document.createElement('div');
+      if (tree) {
+        const sp = speciesInfo(tree.species);
+        el.className = 'tree-pick ' + sp.cls;
+        el.dataset.treeid = tree.id;
+        el.innerHTML = `
+          <div class="health-dot ${healthDotClass(tree.health)}" style="position:absolute;top:3px;right:3px"></div>
+          <span class="tree-pick-icon">${sp.icon}</span>
+          <span class="tree-pick-num">${pos}</span>
+          <span class="tree-pick-name">${tree.name}</span>`;
+        el.onclick = () => {
+          document.querySelectorAll('.tree-pick').forEach(p=>p.classList.remove('selected'));
+          el.classList.add('selected');
+          state.selectedLogTree = tree;
+        };
+      } else {
+        el.className = 'tree-pick empty-slot';
+        el.innerHTML = `<span style="font-size:8px;opacity:0.4">${pos}</span>`;
+      }
+      grid.appendChild(el);
+    }
+    if (!trees.length) {
+      grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300;padding:8px;grid-column:span 4">No trees registered yet. Add trees in the Tree Registry first.</div>';
+    }
+  });
+  buildRecentObs();
+}
+
+function selectObs(type, btn) {
+  document.querySelectorAll('.obs-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.selectedObsType = type;
+  renderLogFields(type);
+}
+
+function renderLogFields(type) {
+  const body = document.getElementById('log-fields-body');
+  // Date field — defaults to today, user can backdate
+  const todayVal = new Date().toISOString().split('T')[0];
+  const dateField = `<div class="field-group"><label class="field-label">Observation date</label><input class="field-input" type="date" id="log-date" value="${todayVal}" max="${todayVal}"></div>`;
+  const fieldSets = {
+    growth: dateField + `<div class="field-group"><label class="field-label">Phenological stage</label><select class="field-select"><option>Dormant</option><option>Silver tip</option><option>Green tip</option><option>Half-inch green</option><option>Pink / White bud</option><option>Full bloom</option><option>Petal fall</option><option>Fruit development</option></select></div><div class="field-group"><label class="field-label">New shoot length (avg)</label><select class="field-select"><option>Less than 2"</option><option>2–4"</option><option>4–8"</option><option>8–12"+</option></select></div><div class="field-group"><label class="field-label">Overall health</label><div class="rating-row"><button class="rating-btn sel-good" onclick="selectRating(this,'good')">Good</button><button class="rating-btn" onclick="selectRating(this,'watch')">Watch</button><button class="rating-btn" onclick="selectRating(this,'concern')">Concern</button></div></div><div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="log-notes" placeholder="Leaf color, canopy density, anything unusual…"></textarea></div>`,
+    fruit: dateField + `<div class="field-group"><label class="field-label">Fruit count (approx)</label><select class="field-select"><option>None visible</option><option>Light set (&lt;25)</option><option>Moderate (25–75)</option><option>Heavy (&gt;75)</option></select></div><div class="field-group"><label class="field-label">Fruit size</label><select class="field-select"><option>Pea-size</option><option>Marble-size</option><option>Golf ball+</option><option>Near harvest</option></select></div><div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="log-notes" placeholder="Drop, russeting, color development, any issues…"></textarea></div>`,
+    pest: dateField + `<div class="field-group"><label class="field-label">Pest observed</label><select class="field-select"><option>Codling moth</option><option>Apple maggot</option><option>Aphids</option><option>Spider mites</option><option>Scale</option><option>Woolly apple aphid</option><option>Deer / rodent browse</option><option>Other</option></select></div><div class="field-group"><label class="field-label">Severity</label><div class="rating-row"><button class="rating-btn sel-good" onclick="selectRating(this,'good')">Mild</button><button class="rating-btn" onclick="selectRating(this,'watch')">Moderate</button><button class="rating-btn" onclick="selectRating(this,'concern')">Heavy</button></div></div><div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="log-notes" placeholder="Location on tree, count, damage description…"></textarea></div>`,
+    disease: dateField + `<div class="field-group"><label class="field-label">Symptom location</label><select class="field-select"><option>Leaves</option><option>Fruit</option><option>Bark / trunk</option><option>New shoots</option><option>Roots / crown</option></select></div><div class="field-group"><label class="field-label">Suspected issue</label><select class="field-select"><option>Apple / pear scab</option><option>Fire blight</option><option>Powdery mildew</option><option>Brown rot</option><option>Peach leaf curl</option><option>Crown rot</option><option>Unknown — needs ID</option></select></div><div class="field-group"><label class="field-label">Severity</label><div class="rating-row"><button class="rating-btn sel-good" onclick="selectRating(this,'good')">Mild</button><button class="rating-btn" onclick="selectRating(this,'watch')">Moderate</button><button class="rating-btn" onclick="selectRating(this,'concern')">Severe</button></div></div><div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="log-notes" placeholder="Color, texture, spread, extent of damage…"></textarea></div>`,
+    work: dateField + `<div class="field-group"><label class="field-label">Work type</label><select class="field-select"><option>Dormant pruning</option><option>Summer pruning</option><option>Copper fungicide spray</option><option>Dormant oil spray</option><option>Lime sulfur spray</option><option>Fertilizer application</option><option>Fruit thinning</option><option>Irrigation</option><option>Mulching / compost</option><option>Pest trap placement</option><option>Other</option></select></div><div class="field-group"><label class="field-label">Product / material (if any)</label><textarea class="field-textarea" style="min-height:50px" id="log-product" placeholder="Product name, rate, dilution, PHI…"></textarea></div><div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="log-notes" placeholder="What you did, results, time spent…"></textarea></div>`,
+    general: dateField + `<div class="field-group"><label class="field-label">Overall health</label><div class="rating-row"><button class="rating-btn sel-good" onclick="selectRating(this,'good')">Good</button><button class="rating-btn" onclick="selectRating(this,'watch')">Watch</button><button class="rating-btn" onclick="selectRating(this,'concern')">Concern</button></div></div><div class="field-group"><label class="field-label">Notes</label><textarea class="field-textarea" id="log-notes" placeholder="General observations, questions, reminders…"></textarea></div>`,
+  };
+  body.innerHTML = fieldSets[type] || '<div style="font-size:11.5px;color:var(--text3)">Select an observation type above.</div>';
+}
+
+function selectRating(btn, cls) {
+  btn.parentElement.querySelectorAll('.rating-btn').forEach(b=>b.className='rating-btn');
+  btn.classList.add('sel-'+cls);
+}
+function selectReg(btn, cls) {
+  btn.closest('.rating-row').querySelectorAll('.rating-btn').forEach(b=>b.className='rating-btn');
+  btn.classList.add('sel-'+cls);
+}
+
+function submitLog() {
+  if (!state.selectedLogTree) { showToast('Please select a tree first'); return; }
+  if (!state.selectedObsType) { showToast('Please select an observation type'); return; }
+  const notesEl = document.getElementById('log-notes');
+  const notes = notesEl ? notesEl.value.trim() : '';
+  const dateEl = document.getElementById('log-date');
+  const loggedDate = dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
+  // Format for display: "Mar 15, 2026"
+  const displayDate = new Date(loggedDate + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const obs = {
+    treeId: state.selectedLogTree.id,
+    type: state.selectedObsType,
+    loggedBy: state.currentUser.id,
+    health: 'healthy',
+    notes: notes || '(No notes entered)',
+    loggedDate: loggedDate,        // ISO string for sorting
+    displayDate: displayDate,      // human-readable for UI
+  };
+  DB.saveObservation(obs).then(() => {
+    DB.updateTree(state.selectedLogTree.id, { lastLogged: displayDate });
+    showToast('Observation saved ✓');
+    buildRecentObs();
+    document.querySelectorAll('.tree-pick').forEach(p=>p.classList.remove('selected'));
+    document.querySelectorAll('.obs-btn').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('log-fields-body').innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">Select a tree and observation type above to see guided fields.</div>';
+    state.selectedLogTree = null; state.selectedObsType = null;
+  });
+}
+
+function buildRecentObs() {
+  const list = document.getElementById('recent-obs-list');
+  list.innerHTML = '';
+  DB.getObservations().then(obs => {
+    if (!obs.length) { list.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">No observations yet.</div>'; return; }
+    obs.slice(0,10).forEach(o => {
+      const u = DB.users.find(u=>u.id===o.loggedBy)||DB.users[0];
+      const t = DB.trees.find(tr=>tr.id===o.treeId);
+      const el = document.createElement('div');
+      el.className = 'obs-entry';
+      el.id = 'obs-entry-' + o.id;
+      // Date: prefer displayDate, fall back to Firestore timestamp, then createdAt string
+      const when = o.displayDate || (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (o.createdAt||''));
+      // Only the logging user can edit/delete
+      const canEdit = o.loggedBy === state.currentUser.id;
+      el.innerHTML = `
+        <div class="obs-header">
+          <span class="obs-tree-ref">${t?t.name:'Unknown'}</span>
+          <span class="obs-user" style="color:${u.color}">${u.name}</span>
+        </div>
+        <div class="obs-type-tag">${o.type}</div>
+        <div class="obs-content" id="obs-content-${o.id}">${(o.notes||'').substring(0,120)}${(o.notes||'').length>120?'…':''}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+          <span style="font-size:9px;color:var(--text3);font-weight:300">${when}</span>
+          ${canEdit ? `<div style="display:flex;gap:5px">
+            <button class="reg-edit-btn" onclick="openEditObs('${o.id}')" style="font-size:9px;padding:2px 8px">Edit</button>
+            <button class="reg-edit-btn" onclick="deleteObs('${o.id}')" style="font-size:9px;padding:2px 8px;color:var(--r600);border-color:#f0c0c0">Delete</button>
+          </div>` : ''}
+        </div>`;
+      list.appendChild(el);
+    });
+  });
+}
+
+function openEditObs(obsId) {
+  DB.getObservations().then(all => {
+    const o = all.find(x => x.id === obsId);
+    if (!o) return;
+    state.editingObsId = obsId;
+    const when = o.displayDate || o.loggedDate || new Date().toISOString().split('T')[0];
+    // Convert display date back to ISO if needed
+    const isoDate = o.loggedDate || new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('edit-obs-modal').classList.add('open');
+    document.getElementById('edit-obs-date').value = isoDate;
+    document.getElementById('edit-obs-date').max = today;
+    document.getElementById('edit-obs-notes').value = o.notes || '';
+    document.getElementById('edit-obs-type').value = o.type || 'general';
+  });
+}
+
+function saveEditObs() {
+  const id = state.editingObsId;
+  if (!id) return;
+  const notes = document.getElementById('edit-obs-notes').value.trim();
+  const loggedDate = document.getElementById('edit-obs-date').value;
+  const displayDate = new Date(loggedDate + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const type = document.getElementById('edit-obs-type').value;
+  DB.updateObservation(id, { notes, loggedDate, displayDate, type }).then(() => {
+    closeEditObsModal();
+    showToast('Observation updated ✓');
+    buildRecentObs();
+    buildActivityFeed();
+  });
+}
+
+function deleteObs(obsId) {
+  if (!confirm('Delete this observation? This cannot be undone.')) return;
+  DB.deleteObservation(obsId).then(() => {
+    showToast('Observation deleted');
+    buildRecentObs();
+    buildActivityFeed();
+  });
+}
+
+function closeEditObsModal() {
+  document.getElementById('edit-obs-modal').classList.remove('open');
+  state.editingObsId = null;
+}
+
+/* ============================================================
+   REGISTRY
+   ============================================================ */
+function buildRegistry() {
+  const body = document.getElementById('reg-table-body');
+  body.innerHTML = '';
+  DB.getTrees().then(trees => {
+    const sub = document.getElementById('registry-sub');
+    if (sub) sub.textContent = `${trees.length} tree${trees.length!==1?'s':''} registered · Tap a row to view on map · Use Modify to edit`;
+    if (!trees.length) {
+      body.innerHTML = '<div style="padding:24px;font-size:11.5px;color:var(--text3);text-align:center;font-weight:300">No trees registered yet. Use the form to add your first tree.</div>';
+      return;
+    }
+    const sorted = [...trees].sort((a,b) => (a.gridPosition||99)-(b.gridPosition||99));
+    sorted.forEach(t => {
+      const age = new Date().getFullYear() - t.yearPlanted;
+      const el = document.createElement('div');
+      el.className = 'reg-row';
+      const bg = t.health==='healthy'?'var(--g600)':t.health==='watch'?'var(--a600)':'var(--r600)';
+      el.innerHTML = `
+        <div><div class="reg-num" style="background:${bg}">${t.gridPosition}</div></div>
+        <div><div class="reg-name">${t.fullName}</div><div class="reg-var">${t.varietal}</div></div>
+        <div class="reg-species">${t.species}</div>
+        <div class="reg-age">${age} yr</div>
+        <div class="reg-root">${t.rootstock||'—'}</div>
+        <div><span class="badge badge-${t.health==='healthy'?'good':t.health==='watch'?'watch':'concern'}" style="font-size:8px">${t.currentStage||'—'}</span></div>
+        <div class="reg-logged">${t.lastLogged||'—'}</div>
+        <div class="reg-actions"><button class="reg-edit-btn" onclick="openEditModal('${t.id}',event)">Modify</button></div>`;
+      el.onclick = (e) => {
+        if (e.target.classList.contains('reg-edit-btn')) return;
+        showScreen('map', document.querySelector('.sidebar-item:nth-child(4)'));
+        setTimeout(()=>selectMapTree(t.id),100);
+      };
+      body.appendChild(el);
+    });
+  });
+}
+
+function addTree() {
+  const name = document.getElementById('new-name').value.trim();
+  const varietal = document.getElementById('new-varietal').value.trim();
+  const year = parseInt(document.getElementById('new-year').value);
+  const rootstock = document.getElementById('new-root').value.trim();
+  const pos = parseInt(document.getElementById('new-pos').value);
+  if (!name || !year || !pos) { showToast('Please fill in name, year, and position'); return; }
+  const tree = {
+    name: varietal || name, fullName: name,
+    species: document.getElementById('new-species').value.split('(')[0].trim(),
+    varietal: varietal || name, yearPlanted: year,
+    rootstock: rootstock || 'Unknown', gridPosition: pos,
+    pollinators: [], health: 'healthy', currentStage: 'Dormant',
+    lastLogged: null,
+  };
+  DB.addTree(tree).then(() => {
+    showToast('Tree registered ✓');
+    buildRegistry(); buildMap(); buildLog(); buildDashStats(); buildDashMiniGrid();
+    ['new-name','new-varietal','new-year','new-root','new-pos'].forEach(id => { document.getElementById(id).value=''; });
+  });
+}
+
+/* ============================================================
+   EDIT MODAL
+   ============================================================ */
+function openEditModal(treeId, e) {
+  if (e) e.stopPropagation();
+  DB.getTree(treeId).then(t => {
+    if (!t) return;
+    document.getElementById('edit-tree-id').value = t.id;
+    document.getElementById('edit-modal-sub').textContent = 'Editing: ' + t.fullName;
+    document.getElementById('edit-name').value = t.fullName || '';
+    document.getElementById('edit-varietal').value = t.varietal || '';
+    document.getElementById('edit-year').value = t.yearPlanted || '';
+    document.getElementById('edit-root').value = t.rootstock || '';
+    document.getElementById('edit-pos').value = t.gridPosition || '';
+    document.getElementById('edit-notes').value = t.notes || '';
+    // Set species dropdown
+    const specSel = document.getElementById('edit-species');
+    for (let i=0; i<specSel.options.length; i++) {
+      if (specSel.options[i].value.startsWith(t.species)) { specSel.selectedIndex = i; break; }
+    }
+    // Set stage dropdown
+    const stageSel = document.getElementById('edit-stage');
+    for (let i=0; i<stageSel.options.length; i++) {
+      if (stageSel.options[i].value === t.currentStage) { stageSel.selectedIndex = i; break; }
+    }
+    // Set health
+    state.editHealth = t.health || 'healthy';
+    selectEditHealth(state.editHealth);
+    document.getElementById('edit-modal').classList.add('open');
+  });
+}
+
+function selectEditHealth(cls) {
+  state.editHealth = cls;
+  document.getElementById('edit-h-good').className    = 'rating-btn' + (cls==='good'?' sel-good':'');
+  document.getElementById('edit-h-watch').className   = 'rating-btn' + (cls==='watch'?' sel-watch':'');
+  document.getElementById('edit-h-concern').className = 'rating-btn' + (cls==='concern'?' sel-concern':'');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+function saveTreeEdit() {
+  const id = document.getElementById('edit-tree-id').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const varietal = document.getElementById('edit-varietal').value.trim();
+  const year = parseInt(document.getElementById('edit-year').value);
+  const rootstock = document.getElementById('edit-root').value.trim();
+  const pos = parseInt(document.getElementById('edit-pos').value);
+  const notes = document.getElementById('edit-notes').value.trim();
+  const stage = document.getElementById('edit-stage').value;
+  if (!name || !year || !pos) { showToast('Name, year, and position are required'); return; }
+  const updates = {
+    fullName: name,
+    name: varietal || name,
+    varietal: varietal || name,
+    species: document.getElementById('edit-species').value.split('(')[0].trim(),
+    yearPlanted: year,
+    rootstock: rootstock || 'Unknown',
+    gridPosition: pos,
+    currentStage: stage,
+    health: state.editHealth,
+    notes: notes,
+  };
+  DB.updateTree(id, updates).then(() => {
+    closeEditModal();
+    showToast('Tree updated ✓');
+    buildRegistry(); buildMap(); buildLog(); buildDashStats(); buildDashMiniGrid();
+  });
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+document.getElementById('edit-obs-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditObsModal();
+});
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  buildUserSwitcher();
+  buildWeather();
+  buildDashboard();
+  buildMap();
+  buildTasks();
+  buildLog();
+  buildRegistry();
+}
+
+init();
+
+window.addEventListener('firebase-ready', () => {
+  document.getElementById('fb-status').textContent = '🟢 Connected';
+  // Refresh all panels with live Firestore data
+  document.getElementById('activity-feed').innerHTML = '';
+  document.getElementById('dash-tasks').innerHTML = '';
+  document.getElementById('dash-grid-mini').innerHTML = '';
+  buildDashboard();
+  buildMap();
+  buildTasks();
+  buildLog();
+  buildRegistry();
+});
+</script>
+</body>
+</html>
