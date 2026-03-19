@@ -470,20 +470,19 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   color: var(--text3); font-size: 18px; cursor: pointer; min-height: 62px;
 }
 .tree-node.add-slot:hover { background: var(--g100); border-color: var(--g600); color: var(--g700); }
-.tree-node-icon { font-size: 22px; line-height: 1; margin-bottom: 4px; }
-.tree-node-num  {
-  font-size: 9px; font-weight: 600; line-height: 1;
-  opacity: 0.5; letter-spacing: 0.02em;
-}
-.tree-node-name {
-  font-size: 10.5px; line-height: 1.2; margin-top: 2px; font-weight: 500;
+.tree-node-icon { font-size: 22px; line-height: 1; margin-bottom: 5px; }
+.tree-node-label {
+  font-size: 11px; font-weight: 500; line-height: 1.2;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; padding: 0 3px;
+  white-space: nowrap; padding: 0 4px; margin-top: 1px;
+}
+.tree-node-label .tree-node-num {
+  opacity: 0.55; font-weight: 400;
 }
 @media (max-width: 480px) {
   .tree-node { min-height: 58px; padding: 6px 3px 5px; }
   .tree-node-icon { font-size: 20px; }
-  .tree-node-name { font-size: 9.5px; }
+  .tree-node-label { font-size: 10px; }
 }
 
 .tree-detail-panel .card-header { background: var(--g800); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
@@ -670,6 +669,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
    REGISTRY SCREEN
    ============================================================ */
 .registry-layout { display: grid; grid-template-columns: 1fr 310px; gap: 20px; align-items: start; }
+.reg-row.selected { background: var(--g50); border-left: 2px solid var(--g600); }
 .registry-table {
   background: var(--surface); border: 0.5px solid var(--border);
   border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);
@@ -950,10 +950,10 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 }
 .mobile-nav-inner { display: flex; }
 .mob-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 6px 4px; background: none; border: none;
-  font-family: var(--font-body); font-size: 9px; color: var(--nav-text);
-  letter-spacing: 0.03em; cursor: pointer; transition: color 0.15s; font-weight: 400;
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 2px; background: none; border: none;
+  font-family: var(--font-body); font-size: 8.5px; color: var(--nav-text);
+  letter-spacing: 0.02em; cursor: pointer; transition: color 0.15s; font-weight: 400;
 }
 .mob-btn.active { color: var(--g200); }
 .mob-icon { font-size: 20px; }
@@ -1245,7 +1245,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 <div id="app">
 
   <div class="topbar">
-    <div class="topbar-logo">The Orchard Book<span>Northwest Washington · Est. 2025</span></div>
+    <div class="topbar-logo">The Orchard Book<span>Forest House  |  Northwest Washington  |  Est 2020</span></div>
     <div class="topbar-spacer"></div>
     <div class="topbar-season" id="topbar-season">🌱 Loading…</div>
     <div class="user-switcher" id="user-switcher"></div>
@@ -1257,7 +1257,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
       <div class="sidebar-item active" onclick="showScreen('dashboard',this)"><span class="sidebar-icon">🏡</span>Dashboard</div>
       <div class="sidebar-section">Orchard</div>
       <div class="sidebar-item" onclick="showScreen('map',this)"><span class="sidebar-icon">🗺</span>Orchard Map</div>
-      <div class="sidebar-item" onclick="showScreen('registry',this)"><span class="sidebar-icon">🌳</span>Tree Registry</div>
+      <div class="sidebar-item" onclick="showScreen('registry',this)"><span class="sidebar-icon">🌳</span>My Trees</div>
       <div class="sidebar-item" id="sidebar-tree-detail" onclick="showScreen('tree-detail',this)" style="display:none"><span class="sidebar-icon">🔍</span><span id="sidebar-tree-detail-label">Tree Detail</span></div>
       <div class="sidebar-section">Field Work</div>
       <div class="sidebar-item" onclick="showScreen('tasks',this)"><span class="sidebar-icon">📋</span>Seasonal Tasks</div>
@@ -1568,7 +1568,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 
         <!-- REGISTRY -->
         <div class="screen" id="screen-registry">
-          <div class="page-title">Tree Registry</div>
+          <div class="page-title">My Trees</div>
           <div class="page-sub" id="registry-sub">Loading trees…</div>
           <div class="registry-layout">
             <div>
@@ -1580,7 +1580,29 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
               </div>
             </div>
             <div>
-              <div class="add-tree-form">
+              <!-- Tree detail card (shown when a row is selected) -->
+              <div class="tree-detail-panel card" id="reg-detail-panel" style="display:none;margin-bottom:16px">
+                <div class="card-header" style="background:var(--g800);border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
+                  <div>
+                    <div class="detail-tree-name" id="rd-name">—</div>
+                    <div class="detail-tree-latin" id="rd-latin"></div>
+                  </div>
+                  <span class="badge badge-good" id="rd-health" style="display:none"></span>
+                </div>
+                <div class="card-body">
+                  <div class="detail-rows" id="rd-rows"></div>
+                  <div id="rd-obs-section" style="display:none">
+                    <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text3);margin:14px 0 8px;font-weight:500">Recent observations</div>
+                    <div class="obs-history" id="rd-obs"></div>
+                  </div>
+                  <div style="display:flex;gap:8px;margin-top:14px">
+                    <button class="btn-ghost" style="flex:1;padding:7px 10px;font-size:11px;background:var(--g800);color:#fff;border-color:var(--g700)" id="rd-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">Tree Profile</button>
+                    <button class="submit-btn" style="flex:1;padding:7px 10px;font-size:11px" id="rd-log-btn" onclick="goToLog()">+ Log</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Add new tree form -->
+              <div class="add-tree-form" id="reg-add-form">
                 <div class="add-form-header"><div class="add-form-title">Register new tree</div></div>
                 <div class="add-form-body">
                   <div class="field-group"><label class="field-label">Common name</label><input class="field-input" type="text" placeholder="e.g. Honeycrisp Apple" id="new-name"></div>
@@ -1633,6 +1655,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
       <button class="mob-btn" onclick="showScreen('tasks',this)"><span class="mob-icon">📋</span>Tasks</button>
       <button class="mob-btn" onclick="showScreen('log',this)"><span class="mob-icon">✏️</span>Log</button>
       <button class="mob-btn" onclick="showScreen('irrigation',this)"><span class="mob-icon">💧</span>Water</button>
+      <button class="mob-btn" onclick="showScreen('registry',this)"><span class="mob-icon">🌳</span>My Trees</button>
     </div>
   </nav>
 </div>
@@ -1744,18 +1767,18 @@ const DB = {
 
   // Tasks seeded once if Firestore tasks collection is empty
   defaultTasks: [
-    { id:'tk1', title:'Apply copper fungicide spray', description:'Fire blight prevention window is open now — apply at green tip to pink stage on all apples, pears, and cherries. Mix at 3 tbsp/gal and spray to runoff. Wet NW spring forecast increases urgency significantly.', urgency:'urgent', due:'Mar 15–25', trees:'All apples, pears, cherries', estMin:50, done:false, category:'spray' },
-    { id:'tk2', title:'Finish dormant pruning — pears', description:'Complete dormant pruning on all pear trees before bud swell advances further. Prioritize crossing branches, downward growth, and water sprouts. Do not remove more than 25% of canopy in one season.', urgency:'urgent', due:'By Mar 18', trees:'All pear trees', estMin:120, done:false, category:'prune' },
-    { id:'tk3', title:'Peach leaf curl — final spray window', description:'Apply lime sulfur or fixed copper on all peach trees before buds break. This is the last opportunity until next dormancy season. Monitor peach trees closely for bud swell progression.', urgency:'urgent', due:'Before Mar 20', trees:'All peach trees', estMin:25, done:false, category:'spray' },
-    { id:'tk4', title:'Apply balanced spring fertilizer', description:'NW soils are often nitrogen-deficient in spring. Apply 10-10-10 fertilizer at the drip line once soil temps exceed 50°F. Avoid high-nitrogen formulas on pears — it increases fire blight susceptibility.', urgency:'soon', due:'By Apr 1', trees:'All trees', estMin:60, done:false, category:'fertilize' },
-    { id:'tk5', title:'Cherry dormant oil spray', description:'Apply horticultural oil to all cherry trees to smother overwintering scale, aphid eggs, and mites. Best applied on a mild dry day (above 40°F) before bud break. Thorough coverage is essential.', urgency:'soon', due:'Before bud break', trees:'All cherry trees', estMin:30, done:false, category:'spray' },
-    { id:'tk6', title:'Place codling moth pheromone traps', description:'Set pheromone traps in all apple trees by pink stage. NW Washington emergence typically late April when sustained temps exceed 50°F. Use one trap per 4 trees minimum, check weekly.', urgency:'upcoming', due:'Late April', trees:'All apple trees', estMin:30, done:false, category:'monitor' },
-    { id:'tk7', title:'Apple maggot barrier bags / traps', description:'Apply Surround kaolin clay or hang red sticky sphere traps in apples by June. Apple maggot is a significant pest in western Washington — early intervention is key to fruit quality.', urgency:'upcoming', due:'Early June', trees:'All apple trees', estMin:60, done:false, category:'monitor' },
-    { id:'tk8', title:'Fruit thinning after June drop', description:'Thin apples and pears to 1 fruit per spur at 6 inch spacing, plums to 2–3 inches. Critical for fruit size, quality, and preventing biennial bearing. This is the highest-yield intervention in the orchard year.', urgency:'upcoming', due:'Late May–June', trees:'All apples, pears, plums', estMin:240, done:false, category:'thin' },
-    { id:'tk9', title:'Cherry harvest — Lapins, Rainier, Bing', description:'Monitor cherries closely for ripeness: full color, slightly soft, sweet taste, brown seeds. Harvest promptly when ready — cherries do not continue ripening off the tree. Watch for bird pressure.', urgency:'upcoming', due:'June–July', trees:'All cherry trees', estMin:120, done:false, category:'harvest' },
-    { id:'tk10', title:'Summer pruning — water sprouts', description:'Remove vigorous upright water sprouts from all trees in summer. This improves light penetration, reduces disease pressure, and redirects energy to fruit. Do not summer-prune peaches heavily.', urgency:'upcoming', due:'July–August', trees:'All trees', estMin:90, done:false, category:'prune' },
-    { id:'tk11', title:'Peach and plum harvest window', description:'Monitor peaches and plums for ripeness: background color changes from green to yellow/cream, fruit softens at the tip, and releases from spur with gentle twist. Taste-test before full harvest.', urgency:'upcoming', due:'August', trees:'All peach and plum trees', estMin:90, done:false, category:'harvest' },
-    { id:'tk12', title:'Fall cleanup — remove all dropped fruit', description:'Remove all fallen fruit from the orchard floor promptly throughout the season, and thoroughly after harvest. Dropped fruit is the primary overwintering site for codling moth, brown rot, and apple maggot.', urgency:'upcoming', due:'Ongoing fall', trees:'All trees', estMin:60, done:false, category:'other' },
+    { id:'tk1', title:'Apply copper fungicide spray', description:'Fire blight prevention window is open now — apply at green tip to pink stage on all apples, pears, and cherries. Mix at 3 tbsp/gal and spray to runoff. Wet NW spring forecast increases urgency significantly.', urgency:'urgent', due:'Mar 15–25', sortOrder:1, trees:'All apples, pears, cherries', estMin:50, done:false, category:'spray' },
+    { id:'tk2', title:'Finish dormant pruning — pears', description:'Complete dormant pruning on all pear trees before bud swell advances further. Prioritize crossing branches, downward growth, and water sprouts. Do not remove more than 25% of canopy in one season.', urgency:'urgent', due:'By Mar 18', sortOrder:2, trees:'All pear trees', estMin:120, done:false, category:'prune' },
+    { id:'tk3', title:'Peach leaf curl — final spray window', description:'Apply lime sulfur or fixed copper on all peach trees before buds break. This is the last opportunity until next dormancy season. Monitor peach trees closely for bud swell progression.', urgency:'urgent', due:'Before Mar 20', sortOrder:3, trees:'All peach trees', estMin:25, done:false, category:'spray' },
+    { id:'tk4', title:'Apply balanced spring fertilizer', description:'NW soils are often nitrogen-deficient in spring. Apply 10-10-10 fertilizer at the drip line once soil temps exceed 50°F. Avoid high-nitrogen formulas on pears — it increases fire blight susceptibility.', urgency:'soon', due:'By Apr 1', sortOrder:4, trees:'All trees', estMin:60, done:false, category:'fertilize' },
+    { id:'tk5', title:'Cherry dormant oil spray', description:'Apply horticultural oil to all cherry trees to smother overwintering scale, aphid eggs, and mites. Best applied on a mild dry day (above 40°F) before bud break. Thorough coverage is essential.', urgency:'soon', due:'Before bud break', sortOrder:5, trees:'All cherry trees', estMin:30, done:false, category:'spray' },
+    { id:'tk6', title:'Place codling moth pheromone traps', description:'Set pheromone traps in all apple trees by pink stage. NW Washington emergence typically late April when sustained temps exceed 50°F. Use one trap per 4 trees minimum, check weekly.', urgency:'upcoming', due:'Late April', sortOrder:6, trees:'All apple trees', estMin:30, done:false, category:'monitor' },
+    { id:'tk7', title:'Apple maggot barrier bags / traps', description:'Apply Surround kaolin clay or hang red sticky sphere traps in apples by June. Apple maggot is a significant pest in western Washington — early intervention is key to fruit quality.', urgency:'upcoming', due:'Early June', sortOrder:8, trees:'All apple trees', estMin:60, done:false, category:'monitor' },
+    { id:'tk8', title:'Fruit thinning after June drop', description:'Thin apples and pears to 1 fruit per spur at 6 inch spacing, plums to 2–3 inches. Critical for fruit size, quality, and preventing biennial bearing. This is the highest-yield intervention in the orchard year.', urgency:'upcoming', due:'Late May–June', sortOrder:7, trees:'All apples, pears, plums', estMin:240, done:false, category:'thin' },
+    { id:'tk9', title:'Cherry harvest — Lapins, Rainier, Bing', description:'Monitor cherries closely for ripeness: full color, slightly soft, sweet taste, brown seeds. Harvest promptly when ready — cherries do not continue ripening off the tree. Watch for bird pressure.', urgency:'upcoming', due:'June–July', sortOrder:9, trees:'All cherry trees', estMin:120, done:false, category:'harvest' },
+    { id:'tk10', title:'Summer pruning — water sprouts', description:'Remove vigorous upright water sprouts from all trees in summer. This improves light penetration, reduces disease pressure, and redirects energy to fruit. Do not summer-prune peaches heavily.', urgency:'upcoming', due:'July–August', sortOrder:10, trees:'All trees', estMin:90, done:false, category:'prune' },
+    { id:'tk11', title:'Peach and plum harvest window', description:'Monitor peaches and plums for ripeness: background color changes from green to yellow/cream, fruit softens at the tip, and releases from spur with gentle twist. Taste-test before full harvest.', urgency:'upcoming', due:'August', sortOrder:11, trees:'All peach and plum trees', estMin:90, done:false, category:'harvest' },
+    { id:'tk12', title:'Fall cleanup — remove all dropped fruit', description:'Remove all fallen fruit from the orchard floor promptly throughout the season, and thoroughly after harvest. Dropped fruit is the primary overwintering site for codling moth, brown rot, and apple maggot.', urgency:'upcoming', due:'Ongoing fall', sortOrder:12, trees:'All trees', estMin:60, done:false, category:'other' },
   ],
 
   async getTrees() {
@@ -2549,7 +2572,7 @@ function buildDashMiniGrid() {
   grid.innerHTML = '';
   DB.getTrees().then(trees => {
     if (!trees.length) {
-      grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);grid-column:span 4;font-weight:300;padding:8px 0">No trees registered yet. Add your first tree in the Tree Registry.</div>';
+      grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);grid-column:span 4;font-weight:300;padding:8px 0">No trees registered yet. Use the form to add your first tree.</div>';
       return;
     }
     // Build 6 rows of 4, displayed bottom-to-top (row 6 = top of grid = back of orchard)
@@ -2567,8 +2590,8 @@ function buildDashMiniGrid() {
           const sp = speciesInfo(tree.species);
           const hd = healthDotClass(tree.health);
           el.className = sp.cls;
-          el.style.cssText = `border-radius:var(--radius-sm);padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.15s;min-height:52px;text-align:center;position:relative;`;
-          el.innerHTML = `<div class="health-dot ${hd}" style="position:absolute;top:4px;right:4px"></div><span style="font-size:16px;line-height:1">${sp.icon}</span><span style="font-size:8px;opacity:0.55;line-height:1;margin-top:1px">${pos}</span><span style="font-size:8.5px;font-weight:400;margin-top:1px;line-height:1.2">${tree.name}</span>`;
+          el.style.cssText = `border-radius:var(--radius-sm);padding:7px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.15s;min-height:60px;text-align:center;position:relative;`;
+          el.innerHTML = `<div class="health-dot ${hd}" style="position:absolute;top:4px;right:4px"></div><span style="font-size:18px;line-height:1;margin-bottom:4px">${sp.icon}</span><span style="font-size:10px;font-weight:500;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;margin-top:1px"><span style="opacity:0.55;font-weight:400">${pos} |</span> ${tree.name}</span>`;
           el.onmouseenter = () => el.style.transform = 'scale(1.05)';
           el.onmouseleave = () => el.style.transform = '';
           el.onclick = () => showTreeDetail(tree.id);
@@ -2598,9 +2621,8 @@ function buildMap() {
         el.title = tree.fullName;
         el.innerHTML = `
           <div class="health-dot ${healthDotClass(tree.health)}"></div>
-          <span class="tree-node-num">${pos}</span>
           <span class="tree-node-icon">${sp.icon}</span>
-          <span class="tree-node-name">${tree.name}</span>`;
+          <span class="tree-node-label"><span class="tree-node-num">${pos} |</span> ${tree.name}</span>`;
         el.onclick = () => selectMapTree(tree.id);
       } else {
         el.className = 'tree-node add-slot';
@@ -2720,6 +2742,16 @@ function renderTaskList() {
     const filtered = state.taskFilter==='all' ? validTasks :
                      state.taskFilter==='done' ? validTasks.filter(t=>t.done) :
                      validTasks.filter(t=>!t.done && t.urgency===state.taskFilter);
+    const urgencyRank = { urgent:0, soon:1, upcoming:2 };
+    filtered.sort((a,b) => {
+      // Done tasks always sink to the bottom
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      // Then sort by urgency tier
+      const uDiff = (urgencyRank[a.urgency]??9) - (urgencyRank[b.urgency]??9);
+      if (uDiff !== 0) return uDiff;
+      // Then by explicit sortOrder (chronological within tier)
+      return (a.sortOrder??999) - (b.sortOrder??999);
+    });
     if (!filtered.length) {
       list.innerHTML = '<div style="font-size:11.5px;color:var(--text3);padding:16px 0;font-weight:300">No tasks in this category.</div>';
     }
@@ -2875,7 +2907,7 @@ function buildLog() {
       grid.appendChild(el);
     }
     if (!trees.length) {
-      grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300;padding:8px;grid-column:span 4">No trees registered yet. Add trees in the Tree Registry first.</div>';
+      grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300;padding:8px;grid-column:span 4">No trees registered yet. Use the form below to add your first tree.</div>';
     }
   });
   buildRecentObs();
@@ -3099,9 +3131,13 @@ function closeEditObsModal() {
 function buildRegistry() {
   const body = document.getElementById('reg-table-body');
   body.innerHTML = '';
+  const rp = document.getElementById('reg-detail-panel');
+  const rf = document.getElementById('reg-add-form');
+  if (rp) { rp.style.display = 'none'; }
+  if (rf) { rf.style.display = 'block'; }
   DB.getTrees().then(trees => {
     const sub = document.getElementById('registry-sub');
-    if (sub) sub.textContent = `${trees.length} tree${trees.length!==1?'s':''} registered · Tap a row to view on map · Use Modify to edit`;
+    if (sub) sub.textContent = `${trees.length} tree${trees.length!==1?'s':''} registered · Tap any row to view tree details · Use Modify to edit`;
     if (!trees.length) {
       body.innerHTML = '<div style="padding:24px;font-size:11.5px;color:var(--text3);text-align:center;font-weight:300">No trees registered yet. Use the form to add your first tree.</div>';
       return;
@@ -3123,10 +3159,68 @@ function buildRegistry() {
         <div class="reg-actions" style="display:flex;gap:5px"><button class="reg-edit-btn" onclick="showTreeDetail('${t.id}')" style="color:var(--g700);border-color:var(--g200)">Profile</button><button class="reg-edit-btn" onclick="openEditModal('${t.id}',event)">Modify</button></div>`;
       el.onclick = (e) => {
         if (e.target.classList.contains('reg-edit-btn')) return;
-        showScreen('map', document.querySelector('.sidebar-item:nth-child(4)'));
-        setTimeout(()=>selectMapTree(t.id),100);
+        selectRegistryTree(t.id);
+        document.querySelectorAll('.reg-row').forEach(r => r.classList.remove('selected'));
+        el.classList.add('selected');
       };
       body.appendChild(el);
+    });
+  });
+}
+
+function selectRegistryTree(treeId) {
+  DB.getTree(treeId).then(t => {
+    if (!t) return;
+    state.selectedTree = t;
+    const panel = document.getElementById('reg-detail-panel');
+    const form  = document.getElementById('reg-add-form');
+    panel.style.display = 'block';
+    form.style.display  = 'none';
+
+    document.getElementById('rd-name').textContent  = t.fullName;
+    document.getElementById('rd-latin').textContent = t.species + ' · ' + t.varietal;
+    const hb = document.getElementById('rd-health');
+    hb.style.display = 'inline-block';
+    hb.textContent = t.health==='healthy'?'Healthy':t.health==='watch'?'Watch':'Concern';
+    hb.className = 'badge badge-' + (t.health==='healthy'?'good':t.health==='watch'?'watch':'concern');
+
+    const age = new Date().getFullYear() - t.yearPlanted;
+    const pollStr = (!t.pollinators||t.pollinators[0]==='self'||!t.pollinators.length)
+      ? 'Self-fertile'
+      : t.pollinators.map(p=>{ const f=DB.trees.find(tr=>tr.id===p); return f?f.name:p; }).join(', ');
+    document.getElementById('rd-rows').innerHTML = `
+      <div class="detail-row"><span class="dr-label">Tree #</span><span class="dr-value">${t.gridPosition}</span></div>
+      <div class="detail-row"><span class="dr-label">Age</span><span class="dr-value">${age} years (planted ${t.yearPlanted})</span></div>
+      <div class="detail-row"><span class="dr-label">Rootstock</span><span class="dr-value">${t.rootstock||'Unknown'}</span></div>
+      <div class="detail-row"><span class="dr-label">Stage</span><span class="dr-value">${t.currentStage||'—'}</span></div>
+      <div class="detail-row"><span class="dr-label">Pollinators</span><span class="dr-value">${pollStr}</span></div>
+      <div class="detail-row"><span class="dr-label">Last logged</span><span class="dr-value">${t.lastLogged||'Never'}</span></div>
+      ${t.notes?`<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:4px"><span class="dr-label">Notes</span><span class="dr-value" style="text-align:left;font-weight:300;line-height:1.5">${t.notes}</span></div>`:''}
+    `;
+    DB.getObservations(t.id).then(obs => {
+      const sec    = document.getElementById('rd-obs-section');
+      const obsDiv = document.getElementById('rd-obs');
+      if (obs.length) {
+        sec.style.display = 'block';
+        obsDiv.innerHTML = '';
+        obs.slice(0,3).forEach(o => {
+          const u = DB.users.find(u=>u.id===o.loggedBy)||DB.users[0];
+          const el = document.createElement('div');
+          el.className = 'obs-item';
+          const when = o.displayDate || (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}) : (o.createdAt||''));
+          const typeClass = {pest:'t-pest',disease:'t-disease',work:'t-work',fruit:'t-fruit',general:'t-general'}[o.type]||'';
+          el.innerHTML = `<div class="obs-meta">
+            <span class="obs-type-tag ${typeClass}" style="margin:0">${o.type}</span>
+            <span style="color:${u.color};font-size:10px">${u.name} · ${when}</span>
+          </div>
+          <div class="obs-note" style="margin-top:4px">${o.notes||'(No notes entered)'}</div>
+          <div style="display:flex;gap:5px;margin-top:6px">
+            <button class="reg-edit-btn" onclick="openEditObs('${o.id}',event)" style="font-size:9px;padding:2px 8px">Edit</button>
+            <button class="reg-edit-btn" onclick="deleteObs('${o.id}',event)" style="font-size:9px;padding:2px 8px;color:var(--r600);border-color:#f0c0c0">Delete</button>
+          </div>`;
+          obsDiv.appendChild(el);
+        });
+      } else { sec.style.display = 'none'; }
     });
   });
 }
