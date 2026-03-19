@@ -470,9 +470,21 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   color: var(--text3); font-size: 18px; cursor: pointer; min-height: 62px;
 }
 .tree-node.add-slot:hover { background: var(--g100); border-color: var(--g600); color: var(--g700); }
-.tree-node-icon { font-size: 18px; line-height: 1; margin-bottom: 2px; }
-.tree-node-num  { font-size: 8px; opacity: 0.55; line-height: 1; }
-.tree-node-name { font-size: 9px; line-height: 1.25; margin-top: 1px; font-weight: 400; }
+.tree-node-icon { font-size: 22px; line-height: 1; margin-bottom: 4px; }
+.tree-node-num  {
+  font-size: 9px; font-weight: 600; line-height: 1;
+  opacity: 0.5; letter-spacing: 0.02em;
+}
+.tree-node-name {
+  font-size: 10.5px; line-height: 1.2; margin-top: 2px; font-weight: 500;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; padding: 0 3px;
+}
+@media (max-width: 480px) {
+  .tree-node { min-height: 58px; padding: 6px 3px 5px; }
+  .tree-node-icon { font-size: 20px; }
+  .tree-node-name { font-size: 9.5px; }
+}
 
 .tree-detail-panel .card-header { background: var(--g800); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 .detail-tree-name { font-family: var(--font-display); font-size: 17px; font-weight: 400; color: var(--g200); }
@@ -1453,8 +1465,8 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
                   <div class="obs-history" id="dt-obs"></div>
                 </div>
                 <div style="display:none;gap:8px;margin-top:14px" id="dt-action-btns">
-                  <button class="btn-ghost" style="flex:1;padding:7px 10px;font-size:11px" id="dt-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">Profile</button>
-                  <button class="submit-btn" style="width:auto;padding:7px 14px;font-size:11px" id="dt-log-btn" onclick="goToLog()">+ Log</button>
+                  <button class="btn-ghost" style="flex:1;padding:7px 10px;font-size:11px;background:var(--g800);color:#fff;border-color:var(--g700)" id="dt-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">Tree Profile</button>
+                  <button class="submit-btn" style="flex:1;padding:7px 10px;font-size:11px" id="dt-log-btn" onclick="goToLog()">+ Log</button>
                 </div>
               </div>
             </div>
@@ -2586,8 +2598,8 @@ function buildMap() {
         el.title = tree.fullName;
         el.innerHTML = `
           <div class="health-dot ${healthDotClass(tree.health)}"></div>
-          <span class="tree-node-icon">${sp.icon}</span>
           <span class="tree-node-num">${pos}</span>
+          <span class="tree-node-icon">${sp.icon}</span>
           <span class="tree-node-name">${tree.name}</span>`;
         el.onclick = () => selectMapTree(tree.id);
       } else {
@@ -2725,7 +2737,7 @@ function renderTaskList() {
             <div class="task-title" style="flex:1">${t.title}</div>
             ${t.done
               ? `<button class="task-complete-btn done-btn" onclick="reopenTask('${t.id}')">↩ Reopen</button>`
-              : `<button class="task-complete-btn" onclick="openCompletionPanel('${t.id}')">Mark complete</button>`
+              : `<button class="task-complete-btn" onclick="openCompletionPanel('${t.id}')">Manage</button>`
             }
           </div>
           <div class="task-desc">${t.description}</div>
