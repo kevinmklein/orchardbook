@@ -334,9 +334,9 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 .badge-good    { background: var(--g100); color: var(--g800); }
 .badge-watch   { background: var(--a100); color: var(--a800); }
 .badge-concern { background: var(--r100); color: var(--r800); }
-.badge-urgent  { background: var(--r100); color: var(--r800); }
+.badge-urgent  { background: var(--g100); color: var(--g800); }
 .badge-soon    { background: var(--a100); color: var(--a800); }
-.badge-upcoming{ background: var(--g100); color: var(--g800); }
+.badge-upcoming{ background: #ddeeff; color: #1a4a80; }
 
 .btn-primary {
   background: var(--g600); color: #fff;
@@ -515,10 +515,10 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   padding: 14px 16px; display: flex; align-items: flex-start; gap: 14px;
   box-shadow: var(--shadow-sm); transition: opacity 0.2s;
 }
-.task-card.urgent   { border-left-color: var(--r600); }
+.task-card.urgent   { border-left-color: var(--g600); }
 .task-card.soon     { border-left-color: var(--a600); }
-.task-card.upcoming { border-left-color: var(--g600); }
-.task-card.done     { border-left-color: #ccc; opacity: 0.5; }
+.task-card.upcoming { border-left-color: #3b7fc4; }
+.task-card.done     { border-left-color: #8b6ab8; opacity: 0.6; }
 .task-check {
   width: 21px; height: 21px; border-radius: 50%;
   border: 1.5px solid var(--border2); background: none; flex-shrink: 0;
@@ -951,6 +951,90 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
    ============================================================ */
 
 
+
+/* ============================================================
+   LOGIN SPLASH SCREEN
+   ============================================================ */
+#login-splash {
+  position: fixed; inset: 0; z-index: 500;
+  background: linear-gradient(160deg, #1a2e10 0%, #1e2124 55%, #0f1a0a 100%);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+#login-splash.dismissing {
+  opacity: 0; pointer-events: none; transform: scale(1.03);
+}
+.splash-inner {
+  text-align: center; padding: 32px 24px; max-width: 420px; width: 100%;
+}
+.splash-orchard-icon {
+  font-size: 56px; line-height: 1; margin-bottom: 18px;
+  filter: drop-shadow(0 4px 16px rgba(74,170,36,0.4));
+}
+.splash-title {
+  font-family: var(--font-display);
+  font-size: 32px; font-weight: 400; color: #e8f0e4;
+  letter-spacing: -0.01em; margin-bottom: 6px;
+}
+.splash-sub {
+  font-size: 12px; color: #6a8060; font-weight: 300;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-bottom: 36px;
+}
+.splash-prompt {
+  font-size: 11.5px; color: #7a9070; font-weight: 300;
+  margin-bottom: 18px; letter-spacing: 0.03em;
+}
+.splash-avatars {
+  display: flex; justify-content: center; gap: 16px; margin-bottom: 32px;
+}
+.splash-avatar {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.splash-avatar-circle {
+  width: 58px; height: 58px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 500; color: white;
+  border: 2.5px solid transparent;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  font-family: var(--font-body);
+}
+.splash-avatar:hover .splash-avatar-circle {
+  transform: scale(1.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.splash-avatar.selected .splash-avatar-circle {
+  border-color: #e8f0e4;
+  transform: scale(1.14);
+  box-shadow: 0 0 0 4px rgba(74,170,36,0.3);
+}
+.splash-avatar-name {
+  font-size: 11px; color: #7a9070; font-weight: 400;
+  transition: color 0.15s;
+}
+.splash-avatar.selected .splash-avatar-name { color: #c0dd97; }
+.splash-enter-btn {
+  width: 100%; padding: 14px;
+  background: var(--g600); color: #fff; border: none;
+  border-radius: var(--radius-md); font-family: var(--font-body);
+  font-size: 13px; font-weight: 500; letter-spacing: 0.05em;
+  cursor: pointer; transition: background 0.15s, box-shadow 0.15s;
+  opacity: 0.4; pointer-events: none;
+}
+.splash-enter-btn.ready {
+  opacity: 1; pointer-events: auto;
+}
+.splash-enter-btn.ready:hover {
+  background: var(--g700);
+  box-shadow: 0 4px 20px rgba(74,170,36,0.35);
+}
+.splash-season {
+  font-size: 10px; color: #3a5030; margin-top: 20px;
+  font-weight: 300; letter-spacing: 0.04em;
+}
+
 /* ============================================================
    TEMPEST LIVE CONDITIONS WIDGET
    ============================================================ */
@@ -959,19 +1043,16 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 }
 .wx-now-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 10px 14px;
+  border-radius: var(--radius-md); padding: 8px 10px;
   display: flex; flex-direction: column; align-items: center;
-  text-align: center; flex: 1; min-width: 80px;
+  text-align: center; flex: 1; min-width: 68px;
   box-shadow: var(--shadow-sm);
 }
-.wx-now-card.wx-feature {
-  border-color: var(--g600); background: var(--g50);
-  flex: 2; min-width: 120px;
-}
-.wx-now-icon   { font-size: 20px; line-height: 1; margin-bottom: 3px; }
-.wx-now-val    { font-family: var(--font-display); font-size: 20px; color: var(--text1); line-height: 1; }
-.wx-now-sub    { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; font-weight: 500; }
-.wx-now-label  { font-size: 10px; color: var(--text2); font-weight: 300; margin-top: 2px; }
+/* wx-feature class removed — all cards uniform size */
+.wx-now-icon   { font-size: 15px; line-height: 1; margin-bottom: 2px; }
+.wx-now-val    { font-family: var(--font-display); font-size: 16px; color: var(--text1); line-height: 1; }
+.wx-now-sub    { font-size: 8.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; font-weight: 500; }
+.wx-now-label  { font-size: 9.5px; color: var(--text2); font-weight: 300; margin-top: 1px; }
 .wx-station-line {
   font-size: 9.5px; color: var(--text3); font-weight: 300;
   margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
@@ -1121,6 +1202,20 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 </style>
 </head>
 <body>
+
+<!-- LOGIN SPLASH SCREEN -->
+<div id="login-splash">
+  <div class="splash-inner">
+    <div class="splash-orchard-icon">🍎</div>
+    <div class="splash-title">The Orchard Book</div>
+    <div class="splash-sub">Forest House Gardens · Northwest Washington</div>
+    <div class="splash-prompt">Who's in the orchard today?</div>
+    <div class="splash-avatars" id="splash-avatars"></div>
+    <button class="splash-enter-btn" id="splash-enter-btn" onclick="enterOrchard()">Enter the orchard →</button>
+    <div class="splash-season" id="splash-season"></div>
+  </div>
+</div>
+
 <div id="app">
 
   <div class="topbar">
@@ -1154,7 +1249,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 
         <!-- DASHBOARD -->
         <div class="screen active" id="screen-dashboard">
-          <div class="page-title">Good morning, <span id="greeting-name">Stacey</span></div>
+          <div class="page-title"><span id="greeting-time">Good morning</span>, <span id="greeting-name">Stacey</span></div>
           <div class="page-sub" id="dash-page-sub">Loading…</div>
 
           <div id="alert-bar-wrap"></div>
@@ -1165,17 +1260,13 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
             <span id="wx-station-label">Loading station…</span>
           </div>
           <div class="wx-now-strip" id="wx-now-strip">
-            <div class="wx-now-card wx-feature" id="wx-temp-card">
+            <div class="wx-now-card" id="wx-temp-card">
               <div class="wx-now-icon">🌡</div>
               <div class="wx-now-val" id="wx-temp">—</div>
               <div class="wx-now-label" id="wx-feels">Feels like —</div>
               <div class="wx-now-sub">Temperature</div>
             </div>
-            <div class="wx-now-card" id="wx-humid-card">
-              <div class="wx-now-icon">💧</div>
-              <div class="wx-now-val" id="wx-humid">—</div>
-              <div class="wx-now-sub">Humidity</div>
-            </div>
+
             <div class="wx-now-card" id="wx-wind-card">
               <div class="wx-now-icon">🌬</div>
               <div class="wx-now-val" id="wx-wind">—</div>
@@ -1191,13 +1282,9 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
             <div class="wx-now-card" id="wx-uv-card">
               <div class="wx-now-icon">☀️</div>
               <div class="wx-now-val" id="wx-uv">—</div>
-              <div class="wx-now-sub">UV Index</div>
+              <div class="wx-now-sub">UV Max Today</div>
             </div>
-            <div class="wx-now-card" id="wx-pressure-card">
-              <div class="wx-now-icon">🔵</div>
-              <div class="wx-now-val" id="wx-pressure">—</div>
-              <div class="wx-now-sub">mb Pressure</div>
-            </div>
+
           </div>
 
           <div class="weather-strip" id="weather-strip"></div>
@@ -1236,9 +1323,9 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
               </div>
             </div>
 
-            <div class="card">
-              <div class="card-header"><div class="card-title">This week's tasks</div></div>
-              <div class="card-body" id="dash-tasks"></div>
+            <div class="card" id="dash-tasks-card">
+              <div class="card-header"><div class="card-title">Tasks</div></div>
+              <div class="card-body" id="dash-tasks-now"></div>
             </div>
 
             <div class="dash-cell-full card" id="snapshot-card">
@@ -1352,8 +1439,8 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
                   <div class="obs-history" id="dt-obs"></div>
                 </div>
                 <div style="display:none;gap:8px;margin-top:14px" id="dt-action-btns">
-                  <button class="btn-ghost" style="flex:1" id="dt-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">View full profile →</button>
-                  <button class="submit-btn" id="dt-log-btn" onclick="goToLog()">+ Log</button>
+                  <button class="btn-ghost" style="flex:1;padding:7px 10px;font-size:11px" id="dt-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">Profile</button>
+                  <button class="submit-btn" style="width:auto;padding:7px 14px;font-size:11px" id="dt-log-btn" onclick="goToLog()">+ Log</button>
                 </div>
               </div>
             </div>
@@ -1368,8 +1455,8 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
             <div>
               <div class="task-filters" id="task-filters">
                 <button class="filter-btn active" onclick="filterTasks('all',this)">All</button>
-                <button class="filter-btn" onclick="filterTasks('urgent',this)">Urgent</button>
-                <button class="filter-btn" onclick="filterTasks('soon',this)">Due soon</button>
+                <button class="filter-btn" onclick="filterTasks('urgent',this)">Do Now</button>
+                <button class="filter-btn" onclick="filterTasks('soon',this)">Soon</button>
                 <button class="filter-btn" onclick="filterTasks('upcoming',this)">Upcoming</button>
                 <button class="filter-btn" onclick="filterTasks('done',this)">Completed</button>
               </div>
@@ -1788,6 +1875,25 @@ const state = {
   treeDetailId: null,   // currently viewed tree detail
 };
 
+
+/* ============================================================
+   GREETING — time-of-day aware
+   ============================================================ */
+function getGreetingWord() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  if (h < 21) return 'Good Evening';
+  return 'Good Night';
+}
+
+function updateGreeting(name) {
+  const timeEl = document.getElementById('greeting-time');
+  const nameEl = document.getElementById('greeting-name');
+  if (timeEl) timeEl.textContent = getGreetingWord();
+  if (nameEl && name) nameEl.textContent = name;
+}
+
 /* ============================================================
    USER SWITCHER
    ============================================================ */
@@ -1802,8 +1908,11 @@ function buildUserSwitcher() {
     el.onclick = () => {
       state.currentUser = u;
       document.querySelectorAll('.user-avatar').forEach((a,i) => a.classList.toggle('active', DB.users[i].id === u.id));
-      document.getElementById('greeting-name').textContent = u.name;
+      updateGreeting(u.name);
       showToast('Switched to ' + u.name);
+      // Re-render obs lists so edit/delete buttons reflect new active user context
+      buildRecentObs();
+      buildActivityFeed();
     };
     wrap.appendChild(el);
   });
@@ -1980,6 +2089,26 @@ const TEMPEST = {
     return days;
   },
 
+  // Fetch today's daily stats for UV max (and other daily highs)
+  async fetchDailyStats() {
+    const id = await this.getStationId();
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % 86400); // midnight UTC approx
+      const data = await this.call(`stats/station/${id}`, {
+        bucket_step_minutes: 1440,
+        time_start: String(startOfDay),
+        time_end: String(now),
+      });
+      // stats returns uv_index daily value
+      const stats = data?.stats?.air_temperature || data?.stats || {};
+      const uvMax = data?.stats?.uv_index?.max_value ?? null;
+      return { uvMax };
+    } catch(e) {
+      return { uvMax: null };
+    }
+  },
+
   // Wind bearing → compass label
   windDir(deg) {
     if (deg == null) return '—';
@@ -1989,7 +2118,7 @@ const TEMPEST = {
 };
 
 // Shared cache for alert bar
-const weatherState = { days: null, fetchedAt: null, liveObs: null };
+const weatherState = { days: null, fetchedAt: null, liveObs: null, uvDayMax: null };
 
 /* ---- Main weather build entry point ---- */
 async function buildWeather() {
@@ -2028,28 +2157,35 @@ async function buildLiveConditions() {
     const obs = await TEMPEST.fetchObservation();
     weatherState.liveObs = obs;
 
-    const tempF    = obs.air_temperature != null ? Math.round(obs.air_temperature) : null;
-    const feelsF   = obs.feels_like != null ? Math.round(obs.feels_like) : tempF;
-    const humidity = obs.relative_humidity != null ? Math.round(obs.relative_humidity) : null;
+    // Tempest ignores units_temp param — always returns Celsius. Convert explicitly.
+    const cToF = c => c != null ? Math.round(c * 9/5 + 32) : null;
+    const tempF  = cToF(obs.air_temperature);
+    const feelsF = cToF(obs.feels_like) ?? tempF;
     const windAvg  = obs.wind_avg != null ? obs.wind_avg.toFixed(1) : null;
     const windDir  = TEMPEST.windDir(obs.wind_direction);
     const windGust = obs.wind_gust != null ? obs.wind_gust.toFixed(1) : null;
-    const rainDay  = obs.precip_accum_local_day != null ? obs.precip_accum_local_day.toFixed(2) : '0.00';
-    const rainRate = obs.precip != null ? obs.precip.toFixed(2) : '0.00';
-    const uv       = obs.uv != null ? obs.uv.toFixed(1) : null;
-    const pressure = obs.sea_level_pressure != null ? Math.round(obs.sea_level_pressure) : null;
+    // Tempest returns precip fields in mm even when units_precip='in' is requested.
+    // Convert mm → inches (÷ 25.4). 0.62" = 15.7mm confirms this.
+    const rainDayMm = obs.precip_accum_local_day != null ? obs.precip_accum_local_day : 0;
+    const rainDay   = (rainDayMm / 25.4).toFixed(2);
+    const rainRateMm = obs.precip != null ? obs.precip : 0;
+    const rainRate   = (rainRateMm / 25.4).toFixed(2);
+    const uvCurrent = obs.uv != null ? obs.uv : null;
+    // Track session UV max — highest reading seen today
+    if (uvCurrent != null && (weatherState.uvDayMax == null || uvCurrent > weatherState.uvDayMax)) {
+      weatherState.uvDayMax = uvCurrent;
+    }
+    const uv = weatherState.uvDayMax != null ? weatherState.uvDayMax.toFixed(1) : (uvCurrent != null ? uvCurrent.toFixed(1) : null);
 
     // Update DOM
     const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
-    set('wx-temp',      tempF != null ? tempF + '°' : '—');
-    set('wx-feels',     feelsF != null ? `Feels like ${feelsF}°` : '');
-    set('wx-humid',     humidity != null ? humidity + '%' : '—');
+    set('wx-temp',      tempF != null ? tempF + '°F' : '—');
+    set('wx-feels',     feelsF != null ? `Feels like ${feelsF}°F` : '');
     set('wx-wind',      windAvg != null ? windAvg : '—');
     set('wx-wind-dir',  windDir);
     set('wx-rain',      rainDay + '"');
     set('wx-rain-rate', 'rate ' + rainRate + '"/hr');
     set('wx-uv',        uv != null ? uv : '—');
-    set('wx-pressure',  pressure != null ? pressure : '—');
 
     // Gust annotation
     const windCard = document.getElementById('wx-wind-card');
@@ -2169,9 +2305,8 @@ function buildDashSubline(today) {
   if (el) el.textContent = `${dateStr} · ${season} · ${stage} stage`;
   if (tb) {
     const mon = today.toLocaleDateString('en-US', { month:'long', year:'numeric' });
-    const tempStr = weatherState.liveObs?.air_temperature != null
-      ? ` · ${Math.round(weatherState.liveObs.air_temperature)}°F`
-      : '';
+    const rawC = weatherState.liveObs?.air_temperature;
+    const tempStr = rawC != null ? ` · ${Math.round(rawC * 9/5 + 32)}°F` : '';
     tb.textContent = `🌱 ${season} · ${mon}${tempStr}`;
   }
 }
@@ -2189,8 +2324,8 @@ async function buildAlertBar(today, weatherDays) {
   // Active rain warning from live station data
   const liveObs = weatherState.liveObs;
   if (liveObs) {
-    const rainRate = liveObs.precip || 0;
-    if (rainRate > 0.5) {
+    const rainRate = (liveObs.precip || 0) / 25.4; // convert mm→in
+    if (rainRate > 0.02) { // > ~0.5mm/hr
       alerts.unshift('🌧 Rain currently falling at the orchard (' + rainRate.toFixed(2) + '"/hr). No spray work today.');
     }
     // Lightning nearby
@@ -2232,10 +2367,10 @@ async function buildAlertBar(today, weatherDays) {
   if (urgentTaskAlerts.length) {
     const taskBar = document.createElement('div');
     taskBar.className = 'alert-bar';
-    taskBar.style.marginBottom = '10px';
-    taskBar.innerHTML = `<span class="alert-icon">🚨</span>
-      <div class="alert-text">
-        <strong>${urgentTaskAlerts.length} urgent task${urgentTaskAlerts.length > 1 ? 's' : ''} need attention</strong>
+    taskBar.style.cssText = 'background:var(--g100);border-color:var(--g200);border-left-color:var(--g600);margin-bottom:10px';
+    taskBar.innerHTML = `<span class="alert-icon">📋</span>
+      <div class="alert-text" style="color:var(--g800)">
+        <strong>${urgentTaskAlerts.length} task${urgentTaskAlerts.length > 1 ? 's' : ''} to do now</strong>
         ${urgentTaskAlerts.join(' · ')}
       </div>`;
     wrap.appendChild(taskBar);
@@ -2287,7 +2422,7 @@ function buildDashStats() {
   DB.getTasks().then(tasks => {
     const urgent = tasks.filter(t => !t.done && (t.urgency==='urgent'||t.urgency==='soon')).length;
     document.getElementById('stat-tasks').textContent = urgent;
-    document.getElementById('stat-tasks-sub').textContent = urgent ? `${tasks.filter(t=>!t.done&&t.urgency==='urgent').length} urgent` : 'All clear';
+    document.getElementById('stat-tasks-sub').textContent = urgent ? `${tasks.filter(t=>!t.done&&t.urgency==='urgent').length} do now` : 'All clear';
   });
 }
 
@@ -2336,21 +2471,39 @@ function buildActivityFeed() {
 }
 
 function buildDashTasks() {
-  const wrap = document.getElementById('dash-tasks');
+  const wrap = document.getElementById('dash-tasks-now');
+  if (!wrap) return;
   wrap.innerHTML = '';
+
+  const goToTasks = () => {
+    const tasksBtn = document.querySelector('.sidebar-item[onclick*="tasks"]') ||
+                     document.querySelector('.mob-btn[onclick*="tasks"]');
+    showScreen('tasks', tasksBtn);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   DB.getTasks().then(tasks => {
-    const urgent = tasks.filter(t => !t.done && (t.urgency==='urgent'||t.urgency==='soon'));
-    if (!urgent.length) { wrap.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">No urgent tasks — orchard is on track.</div>'; return; }
-    urgent.forEach(t => {
+    const actionable = tasks.filter(t => !t.done && (t.urgency === 'urgent' || t.urgency === 'soon'));
+
+    if (!actionable.length) {
+      wrap.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">No open tasks — orchard is on track.</div>';
+      return;
+    }
+
+    actionable.forEach(t => {
       const el = document.createElement('div');
-      el.style.cssText = 'padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;gap:10px;align-items:flex-start;cursor:pointer';
+      el.className = 'task-card ' + t.urgency;
+      el.style.cssText = 'cursor:pointer;margin-bottom:8px;';
       el.innerHTML = `
-        <div style="width:7px;height:7px;border-radius:50%;background:${t.urgency==='urgent'?'var(--r600)':'var(--a600)'};margin-top:5px;flex-shrink:0"></div>
-        <div>
-          <div style="font-size:12.5px;font-weight:500;color:var(--text1);margin-bottom:2px">${t.title}</div>
-          <div style="font-size:10.5px;color:var(--text3);font-weight:300">${t.due} · ${t.trees}</div>
+        <div style="flex:1">
+          <div class="task-title">${t.title}</div>
+          <div class="task-desc">${t.description || ''}</div>
+          <div class="task-footer">
+            <span class="badge badge-${t.urgency}">${urgencyLabel(t.urgency)}</span>
+            <span class="task-meta">${t.due}${t.trees ? ' · ' + t.trees : ''}</span>
+          </div>
         </div>`;
-      el.onclick = () => showScreen('tasks', document.querySelector('.sidebar-item:nth-child(7)'));
+      el.onclick = goToTasks;
       wrap.appendChild(el);
     });
   });
@@ -2462,7 +2615,17 @@ function selectMapTree(treeId) {
           const el = document.createElement('div');
           el.className = 'obs-item';
           const when = o.displayDate || (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}) : (o.createdAt||''));
-          el.innerHTML = `<div class="obs-meta"><span>${o.type}</span><span style="color:${u.color}">${u.name} · ${when}</span></div><div class="obs-note">${o.notes||''}</div>`;
+          const typeClass = {pest:'t-pest',disease:'t-disease',work:'t-work',fruit:'t-fruit',general:'t-general'}[o.type]||'';
+          const noteText = (o.notes||'').replace('no notes','no notes');
+          el.innerHTML = `<div class="obs-meta">
+            <span class="obs-type-tag ${typeClass}" style="margin:0">${o.type}</span>
+            <span style="color:${u.color};font-size:10px">${u.name} · ${when}</span>
+          </div>
+          <div class="obs-note" style="margin-top:4px">${noteText}</div>
+          <div style="display:flex;gap:5px;margin-top:6px">
+            <button class="reg-edit-btn" onclick="openEditObs('${o.id}',event)" style="font-size:9px;padding:2px 8px">Edit</button>
+            <button class="reg-edit-btn" onclick="deleteObs('${o.id}',event)" style="font-size:9px;padding:2px 8px;color:var(--r600);border-color:#f0c0c0">Delete</button>
+          </div>`;
           obsDiv.appendChild(el);
         });
       } else { sec.style.display = 'none'; }
@@ -2483,6 +2646,30 @@ function goToLog() {
       });
     }, 50);
   }
+}
+
+
+/* Urgency display helpers */
+function urgencyLabel(u) {
+  return u === 'urgent' ? 'Do Now' : u === 'soon' ? 'Soon' : u === 'upcoming' ? 'Upcoming' : u === 'done' ? 'Done' : u;
+}
+function urgencyBg(u) {
+  if (u === 'urgent') return 'var(--g600)';
+  if (u === 'soon')   return 'var(--a600)';
+  if (u === 'upcoming') return '#3b7fc4';
+  return '#8b6ab8';  // done = purple
+}
+function urgencyBgLight(u) {
+  if (u === 'urgent') return 'var(--g100)';
+  if (u === 'soon')   return 'var(--a100)';
+  if (u === 'upcoming') return '#ddeeff';
+  return '#f0ebf8';  // done
+}
+function urgencyTextColor(u) {
+  if (u === 'urgent') return 'var(--g800)';
+  if (u === 'soon')   return 'var(--a800)';
+  if (u === 'upcoming') return '#1a4a80';
+  return '#4a2a80';  // done
 }
 
 /* ============================================================
@@ -2512,7 +2699,7 @@ function renderTaskList() {
           <div class="task-title">${t.title}</div>
           <div class="task-desc">${t.description}</div>
           <div class="task-footer">
-            <span class="badge badge-${t.done?'good':t.urgency}">${t.done?'Done':t.urgency}</span>
+            <span class="badge badge-${t.done?'good':t.urgency}">${urgencyLabel(t.done?'done':t.urgency)}</span>
             <span class="task-meta">${t.due} · ${t.trees} · ~${t.estMin} min</span>
             ${t.completedBy?`<span class="task-meta">by ${t.completedBy}</span>`:''}
           </div>
@@ -2661,7 +2848,7 @@ function submitLog() {
     type: state.selectedObsType,
     loggedBy: state.currentUser.id,
     health: health,
-    notes: notes || '(No notes entered)',
+    notes: notes || 'no notes',
     loggedDate: loggedDate,
     displayDate: displayDate,
   };
@@ -2672,9 +2859,16 @@ function submitLog() {
     showToast('Observation saved ✓' + stageMsg);
     buildRecentObs();
     buildActivityFeed();
-    buildDashStats();   // refresh health counts on dashboard
-    buildMap();         // refresh health dots
+    buildDashStats();
+    buildMap();
     buildDashMiniGrid();
+    // Refresh map panel if this tree is currently selected there
+    const savedTreeId = state.selectedLogTree.id;
+    if (state.selectedTree && state.selectedTree.id === savedTreeId) {
+      DB.getTree(savedTreeId).then(fresh => {
+        if (fresh) { state.selectedTree = fresh; selectMapTree(fresh.id); }
+      });
+    }
     document.querySelectorAll('.tree-pick').forEach(p=>p.classList.remove('selected'));
     document.querySelectorAll('.obs-btn').forEach(b=>b.classList.remove('selected'));
     document.getElementById('log-fields-body').innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">Select a tree and observation type above to see guided fields.</div>';
@@ -2695,7 +2889,6 @@ function buildRecentObs() {
       el.className = 'obs-entry';
       el.id = 'obs-entry-' + o.id;
       const when = o.displayDate || (o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (o.createdAt||''));
-      const canEdit = o.loggedBy === state.currentUser.id;
       const typeClass = {pest:'t-pest',disease:'t-disease',work:'t-work',fruit:'t-fruit',general:'t-general'}[o.type]||'';
       el.innerHTML = `
         <div class="obs-header" style="cursor:${t?'pointer':'default'}" onclick="${t?`showTreeDetail('${t.id}')`:''}" >
@@ -2706,10 +2899,10 @@ function buildRecentObs() {
         <div class="obs-content" id="obs-content-${o.id}">${(o.notes||'').substring(0,120)}${(o.notes||'').length>120?'…':''}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
           <span style="font-size:9px;color:var(--text3);font-weight:300">${when}</span>
-          ${canEdit ? `<div style="display:flex;gap:5px">
+          <div style="display:flex;gap:5px">
             <button class="reg-edit-btn" onclick="openEditObs('${o.id}',event)" style="font-size:9px;padding:2px 8px">Edit</button>
             <button class="reg-edit-btn" onclick="deleteObs('${o.id}',event)" style="font-size:9px;padding:2px 8px;color:var(--r600);border-color:#f0c0c0">Delete</button>
-          </div>` : ''}
+          </div>
         </div>`;
       list.appendChild(el);
     });
@@ -2721,6 +2914,11 @@ function openEditObs(obsId, e) {
   Promise.all([DB.getObservations(), DB.getTrees()]).then(([all, trees]) => {
     const o = all.find(x => x.id === obsId);
     if (!o) return;
+    if (o.loggedBy !== state.currentUser.id) {
+      const owner = DB.users.find(u => u.id === o.loggedBy);
+      showToast(`Only ${owner ? owner.name : 'the logger'} can edit this observation`);
+      return;
+    }
     state.editingObsId = obsId;
     state.editingObsHealth = o.health || '';
     const isoDate = o.loggedDate || new Date().toISOString().split('T')[0];
@@ -2771,6 +2969,13 @@ function saveEditObs() {
 
 function deleteObs(obsId, e) {
   if (e) e.stopPropagation();
+  // Permission check — only the logger can delete
+  const obs = DB.observations.find(o => o.id === obsId);
+  if (obs && obs.loggedBy !== state.currentUser.id) {
+    const owner = DB.users.find(u => u.id === obs.loggedBy);
+    showToast(`Only ${owner ? owner.name : 'the logger'} can delete this observation`);
+    return;
+  }
   if (!confirm('Delete this observation? This cannot be undone.')) return;
   DB.deleteObservation(obsId).then(() => {
     showToast('Observation deleted');
@@ -2811,7 +3016,7 @@ function buildRegistry() {
         <div class="reg-species">${t.species}</div>
         <div class="reg-age">${age} yr</div>
         <div class="reg-root">${t.rootstock||'—'}</div>
-        <div><span class="badge badge-${t.health==='healthy'?'good':t.health==='watch'?'watch':'concern'}" style="font-size:8px">${t.currentStage||'—'}</span></div>
+        <div><span style="font-size:8px;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--text2);font-weight:400;border:1px solid var(--border2)">${t.currentStage||'—'}</span></div>
         <div class="reg-logged">${t.lastLogged||'—'}</div>
         <div class="reg-actions" style="display:flex;gap:5px"><button class="reg-edit-btn" onclick="showTreeDetail('${t.id}')" style="color:var(--g700);border-color:var(--g200)">Profile</button><button class="reg-edit-btn" onclick="openEditModal('${t.id}',event)">Modify</button></div>`;
       el.onclick = (e) => {
@@ -3139,7 +3344,10 @@ function renderIrrControllerBar(data) {
     const label  = status === 'ONLINE' ? 'Online' : status === 'OFFLINE' ? 'Offline' : status === 'STANDBY' ? 'Standby' : status;
     const el = document.createElement('div');
     el.className = 'controller-item';
-    el.innerHTML = `<div class="ctrl-dot ${dotCls}"></div><span><strong>${dev.name || 'Controller'}</strong> · ${label} · ${dev.model || ''}</span>`;
+    // Suppress raw model strings like GENERATION3_16ZONE — not user-friendly
+    const modelStr = (dev.model || '').replace(/_/g,' ').toLowerCase();
+    const showModel = dev.model && !dev.model.match(/^GENERATION/i) && !dev.model.match(/^GEN\d/i);
+    el.innerHTML = `<div class="ctrl-dot ${dotCls}"></div><span><strong>${dev.name || 'Controller'}</strong> · ${label}${showModel ? ' · ' + modelStr : ''}</span>`;
     bar.appendChild(el);
   });
   // Also render the compact version in the dashboard widget
@@ -3341,7 +3549,7 @@ window.addEventListener('firebase-ready', () => {
   document.getElementById('fb-status').textContent = '🟢 Connected';
   // Refresh all panels with live Firestore data
   document.getElementById('activity-feed').innerHTML = '';
-  document.getElementById('dash-tasks').innerHTML = '';
+  const dtn = document.getElementById('dash-tasks-now'); if (dtn) dtn.innerHTML = '';
   document.getElementById('dash-grid-mini').innerHTML = '';
   buildDashboard();
   buildMap();
@@ -3371,6 +3579,8 @@ async function buildTreeDetail(treeId) {
   if (!content) return;
   content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3);font-weight:300">Loading tree data…</div>';
 
+  // Force fresh Firestore read — don't use stale local cache
+  DB.trees = DB.trees.filter(t => t.id !== treeId); // evict this tree from cache
   const [tree, allObs, tasks, trees] = await Promise.all([
     DB.getTree(treeId),
     DB.getObservations(treeId),
@@ -3464,7 +3674,7 @@ async function buildTreeDetail(treeId) {
               <div class="td-tree-latin">${tree.species} · ${tree.varietal}</div>
               <div style="margin-top:8px">
                 <span style="font-size:9px;font-weight:500;padding:3px 10px;border-radius:10px;background:${healthBg};color:white;letter-spacing:0.05em">${healthLabel}</span>
-                <span style="font-size:9px;color:#6a8e40;margin-left:10px;font-weight:300">${tree.currentStage || 'Stage unknown'}</span>
+                <span style="font-size:9px;font-weight:500;padding:3px 10px;border-radius:10px;background:rgba(255,255,255,0.15);color:#c8ddb8;letter-spacing:0.04em;margin-left:6px">${tree.currentStage || 'Stage unknown'}</span>
               </div>
             </div>
           </div>
@@ -3529,12 +3739,12 @@ async function buildTreeDetail(treeId) {
         <div class="card" style="padding:0 16px">
           ${relatedTasks.map(t => `
             <div class="td-task-item">
-              <div class="td-task-dot" style="background:${t.urgency==='urgent'?'var(--r600)':t.urgency==='soon'?'var(--a600)':'var(--g600)'}"></div>
+              <div class="td-task-dot" style="background:${urgencyBg(t.urgency)}"></div>
               <div style="flex:1">
                 <div style="font-size:12.5px;font-weight:500;color:var(--text1)">${t.title}</div>
                 <div style="font-size:10.5px;color:var(--text3);font-weight:300;margin-top:2px">${t.due || ''}</div>
               </div>
-              <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:${t.urgency==='urgent'?'var(--r100)':t.urgency==='soon'?'var(--a100)':'var(--g100)'};color:${t.urgency==='urgent'?'var(--r800)':t.urgency==='soon'?'var(--a800)':'var(--g800)'};font-weight:500;letter-spacing:0.04em">${t.urgency}</span>
+              <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:${urgencyBgLight(t.urgency)};color:${urgencyTextColor(t.urgency)};font-weight:500;letter-spacing:0.04em">${urgencyLabel(t.urgency)}</span>
             </div>`).join('')}
         </div>` : ''}
 
@@ -3560,7 +3770,6 @@ async function buildTreeDetail(treeId) {
           const when = o.displayDate || (o.createdAt?.toDate
             ? o.createdAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
             : (o.createdAt || ''));
-          const canEdit = o.loggedBy === state.currentUser.id;
           const typeClass = {pest:'t-pest',disease:'t-disease',work:'t-work',fruit:'t-fruit',general:'t-general'}[o.type]||'';
           const hBadge = o.health && o.health !== 'healthy'
             ? `<span style="font-size:9px;padding:1px 7px;border-radius:8px;background:${o.health==='concern'?'var(--r100)':'var(--a100)'};color:${o.health==='concern'?'var(--r800)':'var(--a800)'};font-weight:500;margin-left:6px">${o.health}</span>`
@@ -3575,10 +3784,10 @@ async function buildTreeDetail(treeId) {
             <div class="td-obs-notes">${o.notes || ''}</div>
             <div class="td-obs-footer">
               <span class="td-obs-who" style="color:${u.color}">${u.name}</span>
-              ${canEdit ? `<div class="td-obs-actions">
+              <div class="td-obs-actions">
                 <button class="reg-edit-btn" onclick="openEditObs('${o.id}',event)" style="font-size:9px;padding:2px 8px">Edit</button>
                 <button class="reg-edit-btn" onclick="deleteObs('${o.id}',event)" style="font-size:9px;padding:2px 8px;color:var(--r600);border-color:#f0c0c0">Delete</button>
-              </div>` : ''}
+              </div>
             </div>
           </div>`;
         }).join('')}
@@ -3611,6 +3820,61 @@ function goToLogFromDetail() {
   }
 }
 
+
+/* ============================================================
+   LOGIN SPLASH
+   ============================================================ */
+function buildSplash() {
+  // Only show once per browser session
+  if (sessionStorage.getItem('orchardSession')) {
+    document.getElementById('login-splash').style.display = 'none';
+    return;
+  }
+
+  // Season/stage line
+  const { stage, season } = getPhenologicalStage(new Date());
+  const mon = new Date().toLocaleDateString('en-US', { month:'long', year:'numeric' });
+  const seasonEl = document.getElementById('splash-season');
+  if (seasonEl) seasonEl.textContent = `${season} · ${mon} · ${stage} stage`;
+
+  // Build avatar picker
+  const wrap = document.getElementById('splash-avatars');
+  if (!wrap) return;
+  DB.users.forEach(u => {
+    const el = document.createElement('div');
+    el.className = 'splash-avatar';
+    el.dataset.uid = u.id;
+    el.innerHTML = `
+      <div class="splash-avatar-circle" style="background:${u.color}">${u.initials}</div>
+      <div class="splash-avatar-name">${u.name}</div>`;
+    el.onclick = () => {
+      document.querySelectorAll('.splash-avatar').forEach(a => a.classList.remove('selected'));
+      el.classList.add('selected');
+      state.currentUser = u;
+      // Update topbar avatars active state
+      document.querySelectorAll('.user-avatar').forEach((a, i) => {
+        a.classList.toggle('active', DB.users[i].id === u.id);
+      });
+      updateGreeting(u.name);
+      const btn = document.getElementById('splash-enter-btn');
+      if (btn) btn.classList.add('ready');
+      btn.textContent = `Enter as ${u.name} →`;
+    };
+    wrap.appendChild(el);
+  });
+}
+
+function enterOrchard() {
+  if (!state.currentUser) return;
+  sessionStorage.setItem('orchardSession', state.currentUser.id);
+  updateGreeting(state.currentUser.name);
+  const splash = document.getElementById('login-splash');
+  if (splash) {
+    splash.classList.add('dismissing');
+    setTimeout(() => { splash.style.display = 'none'; }, 500);
+  }
+}
+
 /* ============================================================
    TOAST
    ============================================================ */
@@ -3626,7 +3890,9 @@ function showToast(msg) {
    ============================================================ */
 function init() {
   buildUserSwitcher();
-  buildDashSubline(new Date()); // set page-sub immediately with today's stage
+  buildSplash();
+  updateGreeting(state.currentUser.name); // time-of-day greeting
+  buildDashSubline(new Date());
   buildWeather();               // async — updates weather strip, then rebuilds page-sub & alert bar
   buildDashboard();
   buildMap();
