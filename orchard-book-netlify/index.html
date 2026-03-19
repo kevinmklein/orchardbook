@@ -388,13 +388,13 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 .activity-badges { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; flex-wrap: wrap; }
 
 .weather-strip {
-  display: flex; gap: 8px; margin-bottom: 22px;
-  overflow-x: auto; padding-bottom: 4px;
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 8px; margin-bottom: 22px;
 }
 .weather-day {
   background: var(--surface); border: 0.5px solid var(--border);
-  border-radius: var(--radius-md); padding: 10px 14px;
-  text-align: center; flex-shrink: 0; min-width: 72px;
+  border-radius: var(--radius-md); padding: 10px 6px;
+  text-align: center; min-width: 0;
 }
 .weather-day.today { border-color: var(--g600); background: var(--g50); box-shadow: 0 0 0 1px var(--g600); }
 .w-day { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
@@ -518,14 +518,26 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 .task-card.urgent   { border-left-color: var(--g600); }
 .task-card.soon     { border-left-color: var(--a600); }
 .task-card.upcoming { border-left-color: #3b7fc4; }
-.task-card.done     { border-left-color: #8b6ab8; opacity: 0.6; }
-.task-check {
-  width: 21px; height: 21px; border-radius: 50%;
-  border: 1.5px solid var(--border2); background: none; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s; color: white; font-size: 10px; margin-top: 2px;
+.task-card.done     { border-left-color: #8b6ab8; opacity: 0.7; }
+.task-complete-btn {
+  font-size: 10px; font-family: var(--font-body); font-weight: 500;
+  padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--text2); white-space: nowrap; flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
 }
-.task-check.checked { background: var(--g600); border-color: var(--g600); }
+.task-complete-btn:hover { background: var(--g100); color: var(--g800); border-color: var(--g300); }
+.task-complete-btn.done-btn { background: #f0ebf8; color: #4a2a80; border-color: #d0c0f0; }
+.task-completion-panel {
+  margin-top: 12px; padding: 12px 14px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); display: none; flex-direction: column; gap: 10px;
+}
+.task-completion-panel.open { display: flex; }
+.tcp-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.tcp-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+.tcp-label { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.tcp-actions { display: flex; gap: 8px; margin-top: 2px; }
 .task-title { font-size: 13px; font-weight: 500; color: var(--text1); margin-bottom: 4px; }
 .task-desc { font-size: 11.5px; color: var(--text2); line-height: 1.6; font-weight: 300; }
 .task-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
@@ -1194,6 +1206,8 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   .reg-table-head, .reg-row { grid-template-columns: 30px 1fr 60px 80px 70px; }
   .reg-species, .reg-root, .reg-logged { display: none; }
   .obs-type-grid { grid-template-columns: repeat(2, 1fr); }
+  .weather-strip { display: flex; overflow-x: auto; padding-bottom: 4px; }
+  .weather-day { flex-shrink: 0; min-width: 68px; padding: 10px 10px; }
 }
 @media (max-width: 480px) {
   .widget-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1313,7 +1327,12 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
           </div>
 
           <div class="dash-grid">
-            <div class="dash-cell-wide card">
+            <div class="dash-cell-wide card" id="dash-tasks-card">
+              <div class="card-header"><div class="card-title">Tasks</div></div>
+              <div class="card-body" id="dash-tasks-now"></div>
+            </div>
+
+            <div class="card">
               <div class="card-header">
                 <div class="card-title">Recent family activity</div>
                 <button class="btn-ghost" onclick="showScreen('log', document.querySelector('.sidebar-item:nth-child(8)'))">+ Log observation</button>
@@ -1321,11 +1340,6 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
               <div class="card-body">
                 <div class="activity-feed" id="activity-feed"></div>
               </div>
-            </div>
-
-            <div class="card" id="dash-tasks-card">
-              <div class="card-header"><div class="card-title">Tasks</div></div>
-              <div class="card-body" id="dash-tasks-now"></div>
             </div>
 
             <div class="dash-cell-full card" id="snapshot-card">
@@ -1784,6 +1798,7 @@ const DB = {
       const snap = await window._fs.getDocs(window._fs.collection(window._db, 'observations'));
       let remote = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       remote.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+      if (!treeId) this.observations = remote; // populate cache on full fetch
       if (treeId) remote = remote.filter(o => o.treeId === treeId);
       return remote;
     } catch(e) { console.warn('getObservations:', e); return []; }
@@ -1926,6 +1941,9 @@ function showScreen(name, triggerEl) {
   document.getElementById('screen-' + name).classList.add('active');
   document.querySelectorAll('.sidebar-item,.mob-btn').forEach(el => el.classList.remove('active'));
   if (triggerEl) triggerEl.classList.add('active');
+  // Scroll the main content area back to top
+  const main = document.querySelector('.main');
+  if (main) main.scrollTop = 0;
   // Auto-fetch Rachio data on first visit to irrigation screen
   if (name === 'irrigation' && !RACHIO.cache) fetchRachio();
 }
@@ -2363,29 +2381,35 @@ async function buildAlertBar(today, weatherDays) {
   // Render
   wrap.innerHTML = '';
 
-  // Urgent task bar (red) — shown if any urgent tasks
+  // Urgent task bar — compact pill, no task titles
   if (urgentTaskAlerts.length) {
     const taskBar = document.createElement('div');
-    taskBar.className = 'alert-bar';
-    taskBar.style.cssText = 'background:var(--g100);border-color:var(--g200);border-left-color:var(--g600);margin-bottom:10px';
-    taskBar.innerHTML = `<span class="alert-icon">📋</span>
-      <div class="alert-text" style="color:var(--g800)">
-        <strong>${urgentTaskAlerts.length} task${urgentTaskAlerts.length > 1 ? 's' : ''} to do now</strong>
-        ${urgentTaskAlerts.join(' · ')}
-      </div>`;
+    taskBar.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;';
+    taskBar.title = 'Go to task list';
+    taskBar.innerHTML = `
+      <span style="display:inline-flex;align-items:center;gap:6px;background:var(--g100);border:1px solid var(--g200);border-radius:20px;padding:4px 12px 4px 8px;font-size:11px;color:var(--g800);font-weight:500;">
+        📋 ${urgentTaskAlerts.length} task${urgentTaskAlerts.length > 1 ? 's' : ''} to do now
+      </span>`;
+    taskBar.onclick = () => {
+      const btn = document.querySelector('.sidebar-item[onclick*="tasks"]') || document.querySelector('.mob-btn[onclick*="tasks"]');
+      showScreen('tasks', btn);
+    };
     wrap.appendChild(taskBar);
   }
 
-  // Orchard advisory bar (amber) — phenological + weather
+  // Orchard advisory bar (amber) — compact pill, matching do-now style
   if (alerts.length) {
     const advisoryBar = document.createElement('div');
-    advisoryBar.className = 'alert-bar';
-    advisoryBar.style.cssText = 'background:var(--a100);border-color:#e8c97a;border-left-color:var(--a600);margin-bottom:18px';
-    advisoryBar.innerHTML = `<span class="alert-icon">🌿</span>
-      <div class="alert-text" style="color:var(--a800)">
-        <strong>${stage} stage advisory</strong>
-        ${alerts.join(' · ')}
-      </div>`;
+    advisoryBar.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;';
+    advisoryBar.title = 'Go to task list';
+    advisoryBar.innerHTML = `
+      <span style="display:inline-flex;align-items:center;gap:6px;background:var(--a100);border:1px solid #e8c97a;border-radius:20px;padding:4px 12px 4px 8px;font-size:11px;color:var(--a800);font-weight:500;">
+        🌿 ${alerts.length} orchard advisor${alerts.length > 1 ? 'ies' : 'y'} — ${stage} stage
+      </span>`;
+    advisoryBar.onclick = () => {
+      const btn = document.querySelector('.sidebar-item[onclick*="tasks"]') || document.querySelector('.mob-btn[onclick*="tasks"]');
+      showScreen('tasks', btn);
+    };
     wrap.appendChild(advisoryBar);
   }
 
@@ -2479,7 +2503,6 @@ function buildDashTasks() {
     const tasksBtn = document.querySelector('.sidebar-item[onclick*="tasks"]') ||
                      document.querySelector('.mob-btn[onclick*="tasks"]');
     showScreen('tasks', tasksBtn);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   DB.getTasks().then(tasks => {
@@ -2681,7 +2704,6 @@ function renderTaskList() {
   const list = document.getElementById('task-list');
   list.innerHTML = '';
   DB.getTasks().then(tasks => {
-    // Guard: skip any doc that's missing required fields
     const validTasks = tasks.filter(t => t.title && t.urgency);
     const filtered = state.taskFilter==='all' ? validTasks :
                      state.taskFilter==='done' ? validTasks.filter(t=>t.done) :
@@ -2691,18 +2713,49 @@ function renderTaskList() {
     }
     filtered.forEach(t => {
       const el = document.createElement('div');
-      el.className = 'task-card ' + (t.done?'done':t.urgency);
+      el.className = 'task-card ' + (t.done ? 'done' : t.urgency);
       el.id = 'tc-' + t.id;
+      const todayStr = new Date().toISOString().slice(0,10);
+      const userOptions = DB.users.map(u =>
+        `<option value="${u.id}" ${u.id === state.currentUser.id ? 'selected' : ''}>${u.name}</option>`
+      ).join('');
       el.innerHTML = `
-        <div class="task-check ${t.done?'checked':''}" onclick="toggleTask('${t.id}',this)">${t.done?'✓':''}</div>
         <div style="flex:1">
-          <div class="task-title">${t.title}</div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div class="task-title" style="flex:1">${t.title}</div>
+            ${t.done
+              ? `<button class="task-complete-btn done-btn" onclick="reopenTask('${t.id}')">↩ Reopen</button>`
+              : `<button class="task-complete-btn" onclick="openCompletionPanel('${t.id}')">Mark complete</button>`
+            }
+          </div>
           <div class="task-desc">${t.description}</div>
           <div class="task-footer">
             <span class="badge badge-${t.done?'good':t.urgency}">${urgencyLabel(t.done?'done':t.urgency)}</span>
             <span class="task-meta">${t.due} · ${t.trees} · ~${t.estMin} min</span>
-            ${t.completedBy?`<span class="task-meta">by ${t.completedBy}</span>`:''}
+            ${t.completedBy ? `<span class="task-meta">✓ ${t.completedBy}${t.completedDate ? ' · ' + t.completedDate : ''}</span>` : ''}
           </div>
+          ${t.completedNotes ? `<div style="font-size:11px;color:var(--text3);font-weight:300;margin-top:6px;font-style:italic">"${t.completedNotes}"</div>` : ''}
+          ${t.done ? '' : `
+          <div class="task-completion-panel" id="tcp-${t.id}">
+            <div class="tcp-row">
+              <div class="tcp-field">
+                <div class="tcp-label">Date completed</div>
+                <input class="field-input" type="date" id="tcp-date-${t.id}" value="${todayStr}" style="font-size:11px;padding:5px 8px">
+              </div>
+              <div class="tcp-field">
+                <div class="tcp-label">Completed by</div>
+                <select class="field-select" id="tcp-user-${t.id}" style="font-size:11px;padding:5px 8px">${userOptions}</select>
+              </div>
+            </div>
+            <div class="tcp-field">
+              <div class="tcp-label">Notes (optional)</div>
+              <textarea class="field-textarea" id="tcp-notes-${t.id}" placeholder="How did it go? Any observations…" style="font-size:11px;min-height:56px;padding:6px 8px"></textarea>
+            </div>
+            <div class="tcp-actions">
+              <button class="submit-btn" style="padding:6px 16px;font-size:11px" onclick="confirmTaskComplete('${t.id}')">Confirm complete</button>
+              <button class="btn-ghost" style="font-size:11px" onclick="closeCompletionPanel('${t.id}')">Cancel</button>
+            </div>
+          </div>`}
         </div>`;
       list.appendChild(el);
     });
@@ -2717,18 +2770,52 @@ function filterTasks(filter, btn) {
   renderTaskList();
 }
 
-function toggleTask(taskId, el) {
+function openCompletionPanel(taskId) {
+  // Close any other open panels first
+  document.querySelectorAll('.task-completion-panel.open').forEach(p => p.classList.remove('open'));
+  const panel = document.getElementById('tcp-' + taskId);
+  if (panel) panel.classList.add('open');
+}
+
+function closeCompletionPanel(taskId) {
+  const panel = document.getElementById('tcp-' + taskId);
+  if (panel) panel.classList.remove('open');
+}
+
+function confirmTaskComplete(taskId) {
   const task = DB.tasks.find(t => t.id === taskId);
   if (!task) return;
-  task.done = !task.done;
-  if (task.done) task.completedBy = state.currentUser.name;
-  DB.updateTask(taskId, { done: task.done, completedBy: task.completedBy || null });
-  el.classList.toggle('checked', task.done);
-  el.textContent = task.done ? '✓' : '';
-  const card = document.getElementById('tc-' + taskId);
-  if (card) card.className = 'task-card ' + (task.done ? 'done' : task.urgency);
-  updateDoneCount(DB.tasks.filter(t => t.title && t.urgency));
-  showToast(task.done ? 'Task marked complete ✓' : 'Task reopened');
+  const dateEl  = document.getElementById('tcp-date-' + taskId);
+  const userEl  = document.getElementById('tcp-user-' + taskId);
+  const notesEl = document.getElementById('tcp-notes-' + taskId);
+  const dateVal  = dateEl  ? dateEl.value  : new Date().toISOString().slice(0,10);
+  const userId   = userEl  ? userEl.value  : state.currentUser.id;
+  const notesVal = notesEl ? notesEl.value.trim() : '';
+  const user = DB.users.find(u => u.id === userId) || state.currentUser;
+  // Format date nicely for display
+  const [y,m,d] = dateVal.split('-');
+  const displayDate = new Date(+y,+m-1,+d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  task.done = true;
+  task.completedBy = user.name;
+  task.completedDate = displayDate;
+  task.completedNotes = notesVal || null;
+  DB.updateTask(taskId, { done: true, completedBy: user.name, completedDate: displayDate, completedNotes: notesVal || null });
+  showToast('Task marked complete ✓');
+  renderTaskList();
+  buildDashTasks();
+}
+
+function reopenTask(taskId) {
+  const task = DB.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.done = false;
+  task.completedBy = null;
+  task.completedDate = null;
+  task.completedNotes = null;
+  DB.updateTask(taskId, { done: false, completedBy: null, completedDate: null, completedNotes: null });
+  showToast('Task reopened');
+  renderTaskList();
+  buildDashTasks();
 }
 
 function updateDoneCount(tasks) {
@@ -2834,7 +2921,10 @@ function submitLog() {
   const treeUpdates = { lastLogged: displayDate };
   if (state.selectedObsType === 'growth') {
     const stageSel = document.getElementById('log-stage');
-    if (stageSel && stageSel.value) treeUpdates.currentStage = stageSel.value;
+    const chosenStage = stageSel ? stageSel.value : '';
+    // If user left the dropdown on Dormant (default), auto-advance to Growth
+    const isDormant = !chosenStage || chosenStage.toLowerCase() === 'dormant';
+    treeUpdates.currentStage = isDormant ? 'Growth' : chosenStage;
     // Health from growth form applies to tree health
     treeUpdates.health = health;
   }
@@ -3545,6 +3635,34 @@ function renderDashIrrWidget(data) {
 }
 
 /* Fetch on dashboard load so widget populates on open */
+/* ============================================================
+   ONE-TIME MIGRATION: backfill trees stuck on Dormant
+   that already have a growth observation logged.
+   Safe to run on every load — only writes when needed.
+   ============================================================ */
+async function migrateGrowthStages() {
+  try {
+    const [allObs, trees] = await Promise.all([DB.getObservations(), DB.getTrees()]);
+    const growthTreeIds = new Set(
+      allObs.filter(o => o.type === 'growth').map(o => o.treeId)
+    );
+    const toUpdate = trees.filter(t =>
+      growthTreeIds.has(t.id) &&
+      (!t.currentStage || t.currentStage.toLowerCase() === 'dormant')
+    );
+    if (!toUpdate.length) return;
+    console.log(`[migration] Advancing ${toUpdate.length} tree(s) from Dormant → Growth`);
+    await Promise.all(toUpdate.map(t => DB.updateTree(t.id, { currentStage: 'Growth' })));
+    // Refresh UI after writes
+    buildRegistry();
+    buildMap();
+    buildDashMiniGrid();
+    console.log('[migration] Growth stage backfill complete.');
+  } catch(e) {
+    console.warn('[migration] migrateGrowthStages failed:', e);
+  }
+}
+
 window.addEventListener('firebase-ready', () => {
   document.getElementById('fb-status').textContent = '🟢 Connected';
   // Refresh all panels with live Firestore data
@@ -3559,6 +3677,8 @@ window.addEventListener('firebase-ready', () => {
   // Rebuild alert bar now that tasks are available from Firestore
   const today = new Date();
   buildAlertBar(today, weatherState.days);
+  // Backfill any trees with growth observations still stuck on Dormant
+  migrateGrowthStages();
   // Kick off Rachio fetch after a short delay so it doesn't compete with Firestore
   setTimeout(() => fetchRachio(), 1200);
 });
@@ -3754,7 +3874,7 @@ async function buildTreeDetail(treeId) {
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Full observation history -->
+      <!-- RIGHT COLUMN: Full observation history + completed tasks -->
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div class="td-section-title" style="margin:0">Observation history</div>
@@ -3791,6 +3911,32 @@ async function buildTreeDetail(treeId) {
             </div>
           </div>`;
         }).join('')}
+
+        ${(() => {
+          const doneTasks = DB.tasks.filter(t => t.done && t.trees);
+          const speciesLower = (tree.species || '').toLowerCase();
+          const nameLower = (tree.name || '').toLowerCase();
+          const relevant = doneTasks.filter(t => {
+            const tl = t.trees.toLowerCase();
+            return tl.includes('all') || tl.includes(speciesLower) || tl.includes(nameLower);
+          });
+          if (!relevant.length) return '';
+          return `
+            <div style="margin-top:20px">
+              <div class="td-section-title" style="margin-bottom:10px">Completed tasks</div>
+              ${relevant.map(t => `
+                <div style="background:var(--surface);border:0.5px solid var(--border);border-left:3px solid #8b6ab8;border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 12px;margin-bottom:8px;opacity:0.8">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px">
+                    <div style="font-size:12px;font-weight:500;color:var(--text1)">${t.title}</div>
+                    <span style="font-size:9px;padding:2px 8px;border-radius:10px;background:#f0ebf8;color:#4a2a80;font-weight:500;white-space:nowrap">Done</span>
+                  </div>
+                  <div style="font-size:10.5px;color:var(--text3);font-weight:300">
+                    ${t.completedBy ? `✓ ${t.completedBy}` : ''}${t.completedDate ? ' · ' + t.completedDate : ''}
+                  </div>
+                  ${t.completedNotes ? `<div style="font-size:10.5px;color:var(--text3);font-weight:300;margin-top:4px;font-style:italic">"${t.completedNotes}"</div>` : ''}
+                </div>`).join('')}
+            </div>`;
+        })()}
       </div>
     </div>`;
 }
