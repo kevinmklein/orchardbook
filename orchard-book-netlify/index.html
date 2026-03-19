@@ -283,6 +283,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  min-width: 0;
 }
 .card-header {
   padding: 13px 18px;
@@ -365,6 +366,8 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 }
 .dash-cell-wide { grid-column: span 2; }
 .dash-cell-full { grid-column: span 3; }
+/* Prevent grid children from overflowing their column */
+.dash-grid > * { min-width: 0; }
 
 .activity-feed { display: flex; flex-direction: column; gap: 6px; }
 .activity-item {
@@ -381,7 +384,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   font-size: 10.5px; color: white; font-weight: 500; margin-top: 2px;
 }
-.activity-text { flex: 1; min-width: 0; }
+.activity-text { flex: 1; min-width: 0; overflow-wrap: break-word; }
 .activity-who { font-size: 10px; font-weight: 500; color: var(--text3); letter-spacing: 0.03em; margin-bottom: 2px; }
 .activity-what { font-size: 12px; font-weight: 300; color: var(--text2); line-height: 1.5; }
 .activity-when { font-size: 9.5px; color: var(--text3); margin-top: 4px; }
@@ -418,6 +421,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
+.dash-snapshot-grid > * { min-width: 0; }
 
 /* ============================================================
    MAP SCREEN
@@ -491,12 +495,13 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 
 .detail-rows { display: flex; flex-direction: column; }
 .detail-row {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: flex-start;
   padding: 9px 0; border-bottom: 0.5px solid var(--border); font-size: 12.5px;
+  min-width: 0; gap: 8px;
 }
 .detail-row:last-child { border-bottom: none; }
 .dr-label { color: var(--text3); font-weight: 300; }
-.dr-value { font-weight: 400; color: var(--text1); text-align: right; }
+.dr-value { font-weight: 400; color: var(--text1); text-align: right; overflow-wrap: break-word; min-width: 0; }
 
 .obs-history { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .obs-item {
@@ -550,7 +555,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 .tcp-label { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
 .tcp-actions { display: flex; gap: 8px; margin-top: 2px; }
 .task-title { font-size: 13px; font-weight: 500; color: var(--text1); margin-bottom: 4px; }
-.task-desc { font-size: 11.5px; color: var(--text2); line-height: 1.6; font-weight: 300; }
+.task-desc { font-size: 11.5px; color: var(--text2); line-height: 1.6; font-weight: 300; overflow-wrap: break-word; }
 .task-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .task-meta { font-size: 10.5px; color: var(--text3); font-weight: 300; }
 
@@ -673,6 +678,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 .registry-table {
   background: var(--surface); border: 0.5px solid var(--border);
   border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);
+  min-width: 0; max-width: 100%;
 }
 .reg-table-head {
   display: grid;
@@ -688,6 +694,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   gap: 8px; padding: 11px 16px;
   border-bottom: 0.5px solid var(--border); align-items: center;
   font-size: 11.5px; transition: background 0.12s;
+  min-width: 0;
 }
 .reg-row:last-child { border-bottom: none; }
 .reg-row:hover { background: var(--g50); }
@@ -926,6 +933,8 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   padding: 8px 0;
   border-bottom: 0.5px solid var(--border);
   font-size: 11.5px;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 .irr-widget-row:last-child { border-bottom: none; }
 .irr-zone-dot {
@@ -1211,14 +1220,16 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   #app { height: 100dvh; }
   .body-wrap { flex-direction: column; }
   .main { flex: 1; overflow-y: auto; overflow-x: hidden; }
-  .main-inner { padding: 12px; max-width: 100%; }
+  .main-inner { padding: 12px; max-width: 100%; box-sizing: border-box; }
   .topbar { padding: 0 12px; }
   .topbar-logo span { display: none; }
 
-  /* Layouts → single column */
-  .map-layout, .tasks-layout, .log-layout, .registry-layout { grid-template-columns: 1fr; }
-  .dash-grid { grid-template-columns: 1fr; }
-  .dash-cell-wide, .dash-cell-full { grid-column: span 1; }
+  /* All screens constrained to viewport */
+  .screen { max-width: 100%; overflow-x: hidden; }
+
+  /* All layouts → single column, fully contained */
+  .map-layout, .tasks-layout, .log-layout, .registry-layout,
+  .irrigation-layout { grid-template-columns: 1fr; min-width: 0; }
 
   /* Metric cards → 2×2 */
   .widget-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -1233,10 +1244,39 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   .weather-strip { display: flex; overflow-x: auto; padding-bottom: 4px; gap: 6px; margin-bottom: 14px; }
   .weather-day { flex-shrink: 0; min-width: 62px; padding: 8px 6px; }
 
-  /* Registry table — hide less-critical cols */
-  .reg-table-head, .reg-row { grid-template-columns: 30px 1fr 60px 80px 70px; }
-  .reg-species, .reg-root, .reg-logged { display: none; }
+  /* Cards — tighter padding, fully contained */
+  .card { min-width: 0; max-width: 100%; }
+  .card-body { padding: 12px; }
+  .card-header { padding: 10px 12px; }
+  .task-card { padding: 11px 12px; gap: 10px; }
+  .activity-item { padding: 9px 10px; gap: 9px; }
+
+  /* Detail rows — allow value text to wrap instead of forcing width */
+  .detail-row { flex-wrap: wrap; gap: 2px; }
+  .dr-value { text-align: left; }
+
+  /* Action buttons in detail panels — stack on very narrow screens */
+  #dt-action-btns, #rd-action-btns,
+  .reg-detail-panel .card-body > div:last-child { flex-wrap: wrap; }
+
+  /* Registry table — strip to just #, name, actions on mobile */
+  .reg-table-head { grid-template-columns: 28px 1fr auto; gap: 6px; padding: 8px 10px; }
+  .reg-row        { grid-template-columns: 28px 1fr auto; gap: 6px; padding: 10px 10px; font-size: 11px; }
+  .reg-species, .reg-root, .reg-logged, .reg-age,
+  .reg-table-head div:nth-child(3),
+  .reg-table-head div:nth-child(4),
+  .reg-table-head div:nth-child(5),
+  .reg-table-head div:nth-child(6),
+  .reg-table-head div:nth-child(7) { display: none; }
+  .reg-actions { flex-direction: column; gap: 4px; align-items: flex-end; }
+  .reg-edit-btn { font-size: 9.5px; padding: 3px 8px; }
+
+  /* Obs type grid */
   .obs-type-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Schedule table — compact */
+  .schedule-table { font-size: 10.5px; }
+  .schedule-table th, .schedule-table td { padding: 7px 5px 7px 0; }
 
   /* Map — tighter nodes, full-width grid */
   .orchard-canvas { padding: 12px; }
@@ -1247,6 +1287,9 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   .tree-node-label { font-size: 9.5px; padding: 0 2px; }
   .map-legend { gap: 10px; margin-bottom: 10px; }
   .map-legend .legend-item { font-size: 9.5px; }
+
+  /* Tree detail panel — contained */
+  .tree-detail-panel { min-width: 0; max-width: 100%; }
 }
 @media (max-width: 480px) {
   .topbar-season { display: none; }
@@ -1257,6 +1300,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   .orchard-grid { gap: 4px; }
   .tree-node { min-height: 50px; }
   .tree-node-label { font-size: 9px; }
+  .reg-actions { flex-direction: row; flex-wrap: wrap; }
 }
 </style>
 </head>
@@ -1497,7 +1541,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
                   <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text3);margin:14px 0 8px;font-weight:500">Recent observations</div>
                   <div class="obs-history" id="dt-obs"></div>
                 </div>
-                <div style="display:none;gap:8px;margin-top:14px" id="dt-action-btns">
+                <div style="display:none;gap:8px;margin-top:14px;flex-wrap:wrap" id="dt-action-btns">
                   <button class="btn-ghost" style="flex:1;padding:7px 10px;font-size:11px;background:var(--g800);color:#fff;border-color:var(--g700)" id="dt-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">Tree Profile</button>
                   <button class="submit-btn" style="flex:1;padding:7px 10px;font-size:11px" id="dt-log-btn" onclick="goToLog()">+ Log</button>
                 </div>
@@ -1628,7 +1672,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
                     <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.09em;color:var(--text3);margin:14px 0 8px;font-weight:500">Recent observations</div>
                     <div class="obs-history" id="rd-obs"></div>
                   </div>
-                  <div style="display:flex;gap:8px;margin-top:14px">
+                  <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
                     <button class="btn-ghost" style="flex:1;padding:7px 10px;font-size:11px;background:var(--g800);color:#fff;border-color:var(--g700)" id="rd-profile-btn" onclick="showTreeDetail(state.selectedTree?.id)">Tree Profile</button>
                     <button class="submit-btn" style="flex:1;padding:7px 10px;font-size:11px" id="rd-log-btn" onclick="goToLog()">+ Log</button>
                   </div>
