@@ -688,15 +688,16 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 }
 .reg-table-head {
   display: grid;
-  grid-template-columns: 36px 1fr 120px 55px 80px 90px 75px 130px;
+  grid-template-columns: 36px 1fr 130px 55px 85px 95px 80px 0 140px;
   gap: 8px; padding: 10px 16px;
   background: var(--surface2); border-bottom: 0.5px solid var(--border);
   font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); font-weight: 500;
 }
 .reg-table-body { max-height: 520px; overflow-y: auto; }
+.reg-desktop-only { color: var(--text2); font-size: 10.5px; font-weight: 300; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reg-row {
   display: grid;
-  grid-template-columns: 36px 1fr 120px 55px 80px 90px 75px 130px;
+  grid-template-columns: 36px 1fr 130px 55px 85px 95px 80px 0 140px;
   gap: 8px; padding: 11px 16px;
   border-bottom: 0.5px solid var(--border); align-items: center;
   font-size: 11.5px; transition: background 0.12s;
@@ -707,15 +708,20 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 .reg-num {
   width: 26px; height: 26px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 500; color: white;
+  font-size: 10px; font-weight: 500; color: white; flex-shrink: 0;
 }
-.reg-name { font-weight: 500; color: var(--text1); }
+.reg-name { font-weight: 500; color: var(--text1); overflow-wrap: break-word; min-width: 0; }
 .reg-var { font-size: 10px; color: var(--text3); font-style: italic; font-weight: 300; }
 .reg-species { color: var(--text2); font-size: 10.5px; font-style: italic; font-weight: 300; }
 .reg-age { color: var(--text2); font-weight: 300; }
 .reg-root { color: var(--text2); font-size: 10.5px; font-weight: 300; }
 .reg-logged { font-size: 10.5px; color: var(--text3); font-weight: 300; }
-.reg-actions { display: flex; gap: 5px; }
+.reg-health-dot {
+  width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0;
+  display: none;
+}
+.reg-mob-stage { display: none; }
+.reg-actions { display: flex; gap: 5px; align-items: center; }
 .reg-edit-btn {
   font-size: 10px; padding: 3px 10px;
   border: 0.5px solid var(--border2); border-radius: 20px;
@@ -1265,17 +1271,20 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
   #dt-action-btns, #rd-action-btns,
   .reg-detail-panel .card-body > div:last-child { flex-wrap: wrap; }
 
-  /* Registry table — strip to just #, name, actions on mobile */
-  .reg-table-head { grid-template-columns: 28px 1fr auto; gap: 6px; padding: 8px 10px; }
-  .reg-row        { grid-template-columns: 28px 1fr auto; gap: 6px; padding: 10px 10px; font-size: 11px; }
-  .reg-species, .reg-root, .reg-logged, .reg-age,
-  .reg-table-head div:nth-child(3),
-  .reg-table-head div:nth-child(4),
-  .reg-table-head div:nth-child(5),
-  .reg-table-head div:nth-child(6),
-  .reg-table-head div:nth-child(7) { display: none; }
-  .reg-actions { flex-direction: row; gap: 4px; align-items: center; flex-wrap: nowrap; }
-  .reg-edit-btn { font-size: 9.5px; padding: 3px 8px; }
+  /* Registry table — mobile: # | varietal+species | stage | actions */
+  .reg-desktop-only { display: none; }
+  .reg-mob-stage { display: block; }
+  .reg-table-head {
+    grid-template-columns: 32px 1fr auto auto;
+    gap: 8px; padding: 8px 12px;
+  }
+  .reg-row {
+    grid-template-columns: 32px 1fr auto auto;
+    gap: 8px; padding: 10px 12px; font-size: 11px;
+    align-items: center;
+  }
+  .reg-actions { flex-direction: row; gap: 5px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; }
+  .reg-edit-btn { font-size: 9.5px; padding: 3px 9px; white-space: nowrap; }
 
   /* Obs type grid */
   .obs-type-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1402,7 +1411,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
           <div class="weather-strip" id="weather-strip"></div>
 
           <div class="widget-grid">
-            <div class="metric-card" onclick="showScreen('map', document.querySelector('.sidebar-item:nth-child(4)'))">
+            <div class="metric-card" onclick="showScreen('registry', document.querySelector('.sidebar-item:nth-child(5)'))">
               <div class="metric-label">Total trees</div>
               <div class="metric-value" id="stat-total">—</div>
               <div class="metric-sub" id="stat-total-sub">Loading…</div>
@@ -1660,7 +1669,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
             <div>
               <div class="registry-table">
                 <div class="reg-table-head">
-                  <div>#</div><div>Name & varietal</div><div>Species</div><div>Age</div><div>Rootstock</div><div>Stage</div><div>Last log</div><div>Actions</div>
+                  <div>#</div><div>Name & species</div><div class="reg-desktop-only">Species</div><div class="reg-desktop-only">Age</div><div class="reg-desktop-only">Rootstock</div><div class="reg-desktop-only">Stage</div><div class="reg-desktop-only">Last log</div><div></div><div>Actions</div>
                 </div>
                 <div class="reg-table-body" id="reg-table-body"></div>
               </div>
@@ -2441,7 +2450,7 @@ function buildDashSubline(today) {
   const tb = document.getElementById('topbar-season');
   const { stage, season } = getPhenologicalStage(today);
   const dateStr = today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
-  if (el) el.textContent = `${dateStr} · ${season} · ${stage} stage`;
+  if (el) el.textContent = `${dateStr} · ${season}`;
   if (tb) {
     const mon = today.toLocaleDateString('en-US', { month:'long', year:'numeric' });
     const rawC = weatherState.liveObs?.air_temperature;
@@ -2901,10 +2910,13 @@ function filterTasks(filter, btn) {
 }
 
 function openCompletionPanel(taskId) {
-  // Close any other open panels first
-  document.querySelectorAll('.task-completion-panel.open').forEach(p => p.classList.remove('open'));
   const panel = document.getElementById('tcp-' + taskId);
-  if (panel) panel.classList.add('open');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  // Close all panels first
+  document.querySelectorAll('.task-completion-panel.open').forEach(p => p.classList.remove('open'));
+  // If it wasn't already open, open it (toggle behaviour)
+  if (!isOpen) panel.classList.add('open');
 }
 
 function closeCompletionPanel(taskId) {
@@ -3236,13 +3248,14 @@ function buildRegistry() {
       const bg = t.health==='healthy'?'var(--g600)':t.health==='watch'?'var(--a600)':'var(--r600)';
       el.innerHTML = `
         <div><div class="reg-num" style="background:${bg}">${t.gridPosition}</div></div>
-        <div><div class="reg-name">${t.fullName}</div><div class="reg-var">${t.varietal}</div></div>
-        <div class="reg-species">${t.species}</div>
-        <div class="reg-age">${age} yr</div>
-        <div class="reg-root">${t.rootstock||'—'}</div>
-        <div><span style="font-size:8px;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--text2);font-weight:400;border:1px solid var(--border2)">${t.currentStage||'—'}</span></div>
-        <div class="reg-logged">${t.lastLogged||'—'}</div>
-        <div class="reg-actions" style="display:flex;gap:5px"><button class="reg-edit-btn" onclick="showTreeDetail('${t.id}')" style="color:var(--g700);border-color:var(--g200)">Profile</button><button class="reg-edit-btn" onclick="openEditModal('${t.id}',event)">Modify</button></div>`;
+        <div><div class="reg-name">${t.varietal}</div><div class="reg-var">${t.species}</div></div>
+        <div class="reg-desktop-only">${t.species}</div>
+        <div class="reg-desktop-only">${age} yr</div>
+        <div class="reg-desktop-only">${t.rootstock||'—'}</div>
+        <div class="reg-desktop-only"><span style="font-size:8px;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--text2);font-weight:400;border:1px solid var(--border2)">${t.currentStage||'—'}</span></div>
+        <div class="reg-desktop-only">${t.lastLogged||'—'}</div>
+        <div class="reg-mob-stage"><span style="font-size:8px;padding:2px 7px;border-radius:8px;background:var(--surface2);color:var(--text2);font-weight:400;border:1px solid var(--border2);white-space:nowrap">${t.currentStage||'—'}</span></div>
+        <div class="reg-actions"><button class="reg-edit-btn" onclick="showTreeDetail('${t.id}')" style="color:var(--g700);border-color:var(--g200)">Profile</button><button class="reg-edit-btn" onclick="openEditModal('${t.id}',event)">Modify</button></div>`;
       el.onclick = (e) => {
         if (e.target.classList.contains('reg-edit-btn')) return;
         selectRegistryTree(t.id);
