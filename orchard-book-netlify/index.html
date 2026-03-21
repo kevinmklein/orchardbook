@@ -1585,7 +1585,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
             </div>
             <div>
               <div class="task-sidebar-card">
-                <div class="card-header"><div class="card-title">March progress</div></div>
+                <div class="card-header"><div class="card-title">Active tasks</div></div>
                 <div class="card-body">
                   <div class="progress-ring-wrap">
                     <svg width="56" height="56" viewBox="0 0 56 56">
@@ -1596,7 +1596,7 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
                     </svg>
                     <div>
                       <div class="progress-count"><span id="done-count">0</span>/<span id="total-count">0</span></div>
-                      <div class="progress-label">tasks done</div>
+                      <div class="progress-label">do now / soon done</div>
                     </div>
                   </div>
                 </div>
@@ -1844,6 +1844,21 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 
 <div class="toast" id="toast"></div>
 
+<!-- Observation-triggered task suggestion panel -->
+<div id="obs-suggestion-panel" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:998;width:min(420px,92vw);background:var(--surface);border:1px solid var(--g200);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:14px 16px;font-family:var(--font-body);">
+  <div style="display:flex;align-items:flex-start;gap:10px">
+    <span style="font-size:18px;flex-shrink:0;margin-top:1px">📋</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:11px;font-weight:500;color:var(--g800);margin-bottom:3px;letter-spacing:0.03em">SUGGESTED TASK</div>
+      <div id="obs-suggestion-title" style="font-size:12.5px;font-weight:500;color:var(--text1);margin-bottom:6px;line-height:1.4"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="acceptObsSuggestion()" style="flex:1;padding:6px 0;background:var(--g800);color:white;border:none;border-radius:var(--radius-sm);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--font-body)">Add to tasks</button>
+        <button onclick="dismissObsSuggestion()" style="padding:6px 14px;background:transparent;color:var(--text3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;font-family:var(--font-body)">Dismiss</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    DATA LAYER — no seed data, Firebase-first with empty fallback
@@ -1982,6 +1997,457 @@ const DB = {
     if (!window._db) return;
     try { await window._fs.deleteDoc(window._fs.doc(window._db,'observations',id)); }
     catch(e) { console.error('deleteObservation:', e); }
+  },
+};
+
+/* ============================================================
+   SMART TASK ENGINE
+   Three layers:
+     1. SEASONAL_RULES  — keyed to phenological stage, WSU-sourced
+     2. WEATHER_RULES   — triggered by forecast conditions
+     3. OBS_RULES       — triggered when an observation is saved
+   All auto-tasks carry source + ruleKey fields so they can be
+   found and updated without duplicating. Done tasks are never
+   overwritten — completion state is always preserved.
+   Sources: WSU Home Garden Spray Schedules (2019), treefruit.wsu.edu
+   fire blight guidance, PNW 400 pruning publication, WSU Snohomish
+   County Extension. Eastern WA spray timing adjusted for western WA's
+   higher disease/pest pressure and wetter spring climate.
+   ============================================================ */
+const SMART_TASKS = {
+
+  // ── 1. SEASONAL RULES ──────────────────────────────────────
+  // stages: array of phenological stage strings this task is active for.
+  // expiresAfterStages: the task auto-hides once these stages have passed
+  // (done tasks are never touched).
+  // Source notes are inline for traceability.
+  SEASONAL_RULES: [
+    {
+      key: 'auto-dormant-prune-stone',
+      stages: ['Dormant', 'Deep dormant', 'Silver tip'],
+      expiresAfterStages: ['Silver tip'],
+      title: 'Dormant pruning — stone fruit (cherry & plum)',
+      description: 'Prune cherry and plum trees during dry winter weather only. WSU Clark County Extension: avoid pruning stone fruit in wet conditions — spread of bacterial canker and cytospora. Complete before bud swell. Remove dead/diseased wood first, then crossing branches and narrow crotch angles. Max 25% canopy removal per season (PNW 400).',
+      urgency: 'soon', due: 'Jan–Feb (dry day)', trees: 'All cherry, plum trees', estMin: 90, category: 'prune',
+    },
+    {
+      key: 'auto-dormant-prune-pome',
+      stages: ['Dormant', 'Deep dormant', 'Silver tip', 'Green tip'],
+      expiresAfterStages: ['Green tip'],
+      title: 'Dormant pruning — apples & pears',
+      description: 'Prune apples and pears after leaf drop and before bud swell. WSU extension: pruning wounds made late in dormancy heal faster, and disease spores are less prevalent in later winter rains. Prioritize structure: remove downward growth, water sprouts, crossing branches. Do not remove more than 25% canopy (PNW 400). Pears: finish before half-inch green to reduce fire blight wound infection risk.',
+      urgency: 'soon', due: 'Dec–Feb', trees: 'All apple, pear trees', estMin: 150, category: 'prune',
+    },
+    {
+      key: 'auto-dormant-copper-stone',
+      stages: ['Dormant', 'Deep dormant'],
+      expiresAfterStages: ['Deep dormant'],
+      title: 'Dormant copper spray — cherries, plums, peaches',
+      description: 'WSU Home Garden Spray Schedules: apply copper-based fungicide to stone fruit at true dormancy (40–45°F days, no frost overnight). Targets coryneum blight (shothole), bacterial gummosis, and bacterial canker in cherries; shot hole and bacterial canker in plums; shot hole, bacterial blight, and peach leaf curl in peaches. Finish by noon for good dry time. Spray to completely wet the tree.',
+      urgency: 'soon', due: 'Dec–Jan', trees: 'All cherry, plum, peach trees', estMin: 40, category: 'spray',
+    },
+    {
+      key: 'auto-delayed-dormant-oil',
+      stages: ['Silver tip', 'Green tip'],
+      expiresAfterStages: ['Green tip'],
+      title: 'Delayed-dormant oil spray — all trees',
+      description: 'WSU Home Garden Spray Schedules (all species): superior-type petroleum horticultural oil at delayed dormant (45–55°F days, no frost forecast). This is the most important spray of the year for controlling overwintering scale, aphid eggs, and mites. Spray when daytime temps reach 45–55°F, finish by noon. Do NOT mix oil with sulfur — toxic combination. Pears: can mix with lime-sulfur if not using oil separately.',
+      urgency: 'urgent', due: 'Feb–Mar (silver/green tip)', trees: 'All trees', estMin: 60, category: 'spray',
+    },
+    {
+      key: 'auto-peach-leafcurl',
+      stages: ['Silver tip', 'Green tip', 'Half-inch green'],
+      expiresAfterStages: ['Half-inch green'],
+      title: 'Peach leaf curl — final spray window',
+      description: 'WSU Home Garden Peach Spray Schedule: apply lime sulfur, Bordeaux mixture, or fixed copper BEFORE buds break (40–45°F days). This is the critical window — once buds swell past silver tip the fungus has already entered. Western WA note: our wet springs make peach leaf curl pressure higher than eastern WA. Never use sulfur on apricots. Finish spraying by noon to ensure dry time.',
+      urgency: 'urgent', due: 'Before bud swell', trees: 'All peach trees', estMin: 25, category: 'spray',
+    },
+    {
+      key: 'auto-fireblight-copper',
+      stages: ['Silver tip', 'Green tip', 'Half-inch green', 'Tight cluster'],
+      expiresAfterStages: ['Tight cluster'],
+      title: 'Fire blight prevention — delayed dormant copper',
+      description: 'WSU treefruit.wsu.edu fire blight guidance: copper applied at delayed dormant kills fire blight bacteria as they ooze from overwintered cankers, reducing spring inoculum. If fire blight was active in your orchard last year, this spray is especially important. Apply copper-based product before tight cluster on apples and pears. Western WA note: fire blight pressure is significant west of the Cascades in wet springs.',
+      urgency: 'urgent', due: 'Silver tip → tight cluster', trees: 'All apple, pear trees', estMin: 45, category: 'spray',
+    },
+    {
+      key: 'auto-pink-spray',
+      stages: ['Tight cluster', 'Pink / balloon'],
+      expiresAfterStages: ['Pink / balloon'],
+      title: 'Pink / tight cluster spray — powdery mildew & insects',
+      description: 'WSU Home Garden Apple Spray Schedule: at pink stage (before flowers open) apply sulfur or all-season horticultural oil for powdery mildew control. Also targets hatching insect pests: mealybug, lygus bug, stinkbug, aphid, mites. For feeding caterpillars (leafrollers): spinosad or Bt. IMPORTANT: Do not use horticultural oil if sulfur was applied or will be applied at any time of year — toxic combination. Do not apply sulfur to Delicious varieties (severe fruit drop risk).',
+      urgency: 'urgent', due: 'Tight cluster → pink', trees: 'All apple, pear trees', estMin: 45, category: 'spray',
+    },
+    {
+      key: 'auto-bloom-no-spray',
+      stages: ['Bloom'],
+      expiresAfterStages: ['Bloom'],
+      title: '🌸 Bloom — NO insecticide sprays',
+      description: 'WSU Home Garden Spray Schedules (all 5 species): AVOID pesticide application during bloom to protect honeybees. This applies to all trees. If disease pressure is extreme, fungicide-only applications may be made in evening when bees are not foraging. Fire blight: if warm wet conditions occur during bloom, copper or biological sprays (Blossom Protect) may be applied in the evening. Scout for fire blight symptoms 5–7 days after any warm wet period.',
+      urgency: 'urgent', due: 'During bloom', trees: 'All trees', estMin: 15, category: 'monitor',
+    },
+    {
+      key: 'auto-spring-fertilize',
+      stages: ['Tight cluster', 'Pink / balloon', 'Bloom', 'Petal fall'],
+      expiresAfterStages: ['Petal fall'],
+      title: 'Spring fertilizer application',
+      description: 'Apply balanced fertilizer at the drip line once buds are actively growing. Western WA soils are often nitrogen-deficient in spring. WSU guidance: avoid high-nitrogen formulas on pears — it promotes excessive vegetative growth which increases fire blight susceptibility. Use a balanced 10-10-10 or low-nitrogen formula for pears specifically. Apply to drip line, not trunk. Do not fertilize heavily in year of significant fire blight pressure.',
+      urgency: 'soon', due: 'Mar–Apr', trees: 'All trees', estMin: 45, category: 'fertilize',
+    },
+    {
+      key: 'auto-petal-fall-spray',
+      stages: ['Petal fall', 'Calyx / fruit set'],
+      expiresAfterStages: ['Calyx / fruit set'],
+      title: 'Petal fall cover spray — scab, mildew & insects',
+      description: 'WSU Home Garden Apple & Pear Spray Schedules: petal fall is a critical spray window. Apply fungicide (sulfur or captan) for scab and powdery mildew. Also target hatching insects: aphids, plant bugs, stinkbugs, scale, mites, and feeding caterpillars. Fire blight: WSU treefruit.wsu.edu notes the 3 weeks after petal fall is a common secondary infection time in Washington — scout for wilting shoot tips. Do NOT use horticultural oil if sulfur was used at pink stage.',
+      urgency: 'urgent', due: 'At petal fall', trees: 'All apples, pears, cherries', estMin: 50, category: 'spray',
+    },
+    {
+      key: 'auto-cherry-fruitfly',
+      stages: ['Calyx / fruit set', 'Early fruitlet', 'June drop / thinning', 'Fruitlet development'],
+      expiresAfterStages: ['Fruitlet development'],
+      title: 'Cherry fruit fly preventative sprays',
+      description: 'WSU Home Garden Cherry Spray Schedule: begin cherry fruit fly sprays when cherries turn from light green to yellow-green (late May). Cherry fruit fly (a major pest in western WA) inserts eggs under fruit skin, resulting in maggots at harvest. Present mid-May through late July. Use spinosad, acetamiprid, or malathion on schedule. Also watch for spotted wing drosophila (SWD) — a newer pest flagged in WSU schedules, use spinosad. Remove all fruit left on tree after harvest — seal in black bags.',
+      urgency: 'soon', due: 'Late May–July', trees: 'All cherry trees', estMin: 30, category: 'spray',
+    },
+    {
+      key: 'auto-codling-moth-traps',
+      stages: ['Petal fall', 'Calyx / fruit set', 'Early fruitlet'],
+      expiresAfterStages: ['Early fruitlet'],
+      title: 'Place codling moth pheromone traps',
+      description: 'WSU Home Garden Apple Spray Schedule: set pheromone traps in all apple trees by pink/petal fall stage. NW Washington emergence typically late April when sustained temps exceed 50°F. Use one trap per 4 trees minimum, check weekly. The 1st generation damages apples from petal fall through August; 2nd generation (July–Aug) damages pears. Trap catch is your best indicator of when to start preventive sprays (17–21 days after full bloom or 10 days after petal fall).',
+      urgency: 'soon', due: 'Late April', trees: 'All apple trees', estMin: 30, category: 'monitor',
+    },
+    {
+      key: 'auto-codling-moth-spray',
+      stages: ['Early fruitlet', 'June drop / thinning', 'Fruitlet development', 'Fruit development'],
+      expiresAfterStages: ['Fruit development'],
+      title: 'Codling moth spray program — apples',
+      description: 'WSU Home Garden Apple Spray Schedule: start preventive sprays 17–21 days after full bloom or 10 days after petal fall. PRIMARY PEST OF APPLES. First generation lasts 6 weeks, second generation another 6 weeks — protect through August. Reapply after heavy rain. Products: spinosad (organic option), esfenvalerate, permethrin, acetamiprid. Vary products across season to minimize resistance (WSU guidance). Remove any "stung" apples (shallow surface entries) — seal in black bags in sun 2 weeks.',
+      urgency: 'soon', due: 'May–Aug (every 10–14 days)', trees: 'All apple trees', estMin: 45, category: 'spray',
+    },
+    {
+      key: 'auto-thin-fruitlets',
+      stages: ['June drop / thinning', 'Fruitlet development'],
+      expiresAfterStages: ['Fruitlet development'],
+      title: 'Fruit thinning — apples, pears & plums',
+      description: 'Thin fruitlets after natural June drop when fruit is dime-to-quarter size. WSU guidance: thin apples and pears to 1 fruit per spur at 6-inch spacing; plums to 2–3 inches. This is the single highest-yield intervention of the orchard year — improves fruit size, quality, reduces biennial bearing, and lowers pest hiding sites. WSU Clark County: fruit thinning in May reduces hiding places for many pest types. Cherries do not need thinning.',
+      urgency: 'urgent', due: 'Late May–June', trees: 'All apples, pears, plums', estMin: 240, category: 'thin',
+    },
+    {
+      key: 'auto-apple-maggot',
+      stages: ['Fruitlet development', 'Fruit development'],
+      expiresAfterStages: ['Fruit development'],
+      title: 'Apple maggot barrier bags / sticky traps',
+      description: 'WSU Home Garden Apple Spray Schedule: apply protection in early July. Apple maggot is a significant pest in western Washington — eggs laid under fruit skin result in maggots at harvest. Options: red sticky sphere traps (one per tree), Surround kaolin clay barrier, or insecticide sprays on the codling moth schedule. WSU EB1928: traps hung by early July, before adults emerge. Check traps weekly and refresh sticky coating. Western WA has higher apple maggot pressure than eastern WA.',
+      urgency: 'soon', due: 'Early July', trees: 'All apple trees', estMin: 60, category: 'monitor',
+    },
+    {
+      key: 'auto-pear-codling-2ndgen',
+      stages: ['Fruitlet development', 'Fruit development'],
+      expiresAfterStages: ['Fruit development'],
+      title: 'Codling moth 2nd generation spray — pears',
+      description: 'WSU Home Garden Pear Spray Schedule: the 2nd generation of codling moth (July–August) is the primary codling moth problem for pears. Start protective sprays in early July, keep protected through August. A 3rd generation is possible. Products: spinosad, azadirachtin (organic), pyrethrins, acetamiprid. Follow spray schedule on label. Reapply after heavy rain. Remove "stung" pears — seal in black bags and leave in sun 2 weeks to kill worms.',
+      urgency: 'soon', due: 'July–Aug', trees: 'All pear trees', estMin: 35, category: 'spray',
+    },
+    {
+      key: 'auto-summer-prune',
+      stages: ['Fruit development', 'Pre-harvest'],
+      expiresAfterStages: ['Pre-harvest'],
+      title: 'Summer pruning — water sprouts & stone fruit',
+      description: 'WSU Clark County Extension: summer is the best time to prune stone fruit trees (cherry, plum, peach). Remove vigorous upright water sprouts from all trees to improve light penetration, reduce disease pressure, and redirect energy to fruit. WSU treefruit.wsu.edu: summer pruning to remove fire blight strikes — cut 8–10 inches below visible canker, disinfect tools between cuts. Do not summer-prune peaches heavily. Limit to 25% canopy removal for the season across dormant + summer pruning combined.',
+      urgency: 'upcoming', due: 'July–Aug', trees: 'All trees', estMin: 90, category: 'prune',
+    },
+    {
+      key: 'auto-cherry-harvest',
+      stages: ['Fruit development', 'Pre-harvest'],
+      expiresAfterStages: ['Pre-harvest'],
+      title: 'Cherry harvest monitoring',
+      description: 'Monitor cherries closely as they approach full color. WSU harvest indicators: full color development, slightly soft texture, sweet taste, brown seeds visible when cut. Cherries do NOT continue ripening off the tree — harvest promptly when ready. Watch for bird pressure and spotted wing drosophila (SWD) damage. Remove all fruit remaining after harvest — seal in black garbage bags, leave in sun 2 weeks to kill any larvae (WSU Cherry Spray Schedule).',
+      urgency: 'upcoming', due: 'June–July', trees: 'All cherry trees', estMin: 90, category: 'harvest',
+    },
+    {
+      key: 'auto-peach-plum-harvest',
+      stages: ['Pre-harvest', 'Harvest'],
+      expiresAfterStages: ['Harvest'],
+      title: 'Peach & plum harvest window',
+      description: 'Monitor peaches and plums for ripeness. WSU/PNW harvest indicators: background skin color shifts from green to yellow or cream, fruit softens at the tip, and releases from spur with a gentle twist. Taste-test before committing to full harvest. Peaches bruise easily — handle carefully. SWD is active in western WA through September (WSU Peach Spray Schedule) — inspect fruit for small larvae at harvest.',
+      urgency: 'upcoming', due: 'Aug–Sept', trees: 'All peach, plum trees', estMin: 90, category: 'harvest',
+    },
+    {
+      key: 'auto-apple-pear-harvest',
+      stages: ['Pre-harvest', 'Harvest'],
+      expiresAfterStages: ['Harvest'],
+      title: 'Apple & pear harvest readiness check',
+      description: 'Check apples and pears for harvest readiness: background color shifts from green to yellow/cream, fruit separates easily with upward twist, seeds turn brown, starch pattern retreats (starch-iodine test). Flavor and texture develop best at proper harvest maturity — early picking is a common mistake. Check spray pre-harvest intervals (PHI) against last application date before harvesting any treated fruit.',
+      urgency: 'upcoming', due: 'Aug–Oct (variety dependent)', trees: 'All apple, pear trees', estMin: 60, category: 'harvest',
+    },
+    {
+      key: 'auto-fall-copper-stone',
+      stages: ['Post-harvest', 'Leaf drop / cleanup'],
+      expiresAfterStages: ['Leaf drop / cleanup'],
+      title: 'Fall copper spray — stone fruit',
+      description: 'WSU Home Garden Spray Schedules (cherry, peach, plum): apply copper-based fungicide PRIOR to rainy weather, usually October in western WA. Prevents coryneum blight (shothole), bacterial gummosis (cherries), and bacterial canker (plums). Western WA note: our October–November rain season makes this spray especially important — apply before the first sustained rain event. Spray to thoroughly wet branches and trunk.',
+      urgency: 'soon', due: 'Before Oct rains', trees: 'All cherry, plum, peach trees', estMin: 40, category: 'spray',
+    },
+    {
+      key: 'auto-fall-cleanup',
+      stages: ['Post-harvest', 'Leaf drop / cleanup', 'Dormant'],
+      expiresAfterStages: ['Dormant'],
+      title: 'Fall cleanup — remove dropped fruit & leaves',
+      description: 'WSU Home Garden Spray Schedules and treefruit.wsu.edu: remove all fallen fruit from the orchard floor promptly. Dropped fruit is the primary overwintering site for codling moth, brown rot, apple maggot, and SWD. After leaf drop, rake and remove leaves to reduce apple scab and powdery mildew spore load for next season (WSU Snohomish County Master Gardener guidance). Seal infested fruit in black garbage bags, leave in sun 2 weeks before disposal.',
+      urgency: 'soon', due: 'Oct–Nov', trees: 'All trees', estMin: 90, category: 'other',
+    },
+  ],
+
+  // ── 2. WEATHER RULES ───────────────────────────────────────
+  // Evaluated after forecast loads. Each rule gets a short-lived task
+  // that clears once the condition resolves (unless manually completed).
+  WEATHER_RULES: [
+    {
+      key: 'auto-wx-fireblight',
+      title: 'Fire blight risk elevated — spray window',
+      description: 'WSU treefruit.wsu.edu: fire blight infections commonly occur during bloom and the 3 weeks following petal fall when warm wet conditions are present. Your 7-day forecast shows 3+ wet days during a vulnerable period. Consider applying copper or biological spray (Blossom Protect) in the evening. Scout for wilting shoot tips ("shepherd\'s crook") 5–7 days after infection events. Minimize overhead irrigation during this period.',
+      urgency: 'urgent', trees: 'All apple, pear trees', estMin: 30, category: 'spray',
+      condition(days, stage) {
+        const vuln = ['Tight cluster','Pink / balloon','Bloom','Petal fall','Calyx / fruit set'];
+        if (!vuln.includes(stage)) return false;
+        const wetDays = days.filter(d => d.wet).length;
+        return wetDays >= 3;
+      },
+      due(days) {
+        const wetDays = days.filter(d => d.wet).length;
+        return `${wetDays} wet days forecast`;
+      },
+    },
+    {
+      key: 'auto-wx-frost',
+      title: 'Frost risk — check blossom protection',
+      description: 'Sub-freezing temperatures are forecast within 48 hours during a vulnerable growth stage. WSU critical blossom bud temperatures: apple/pear — tight cluster 28°F (10% kill), pink 25°F; peach — pink bud 24°F; cherry — tight cluster 27°F. If you have frost cloth or overhead irrigation for frost protection, check readiness now. Avoid working in wet trees or pruning ahead of a frost.',
+      urgency: 'urgent', trees: 'All trees', estMin: 20, category: 'monitor',
+      condition(days, stage) {
+        const vuln = ['Green tip','Half-inch green','Tight cluster','Pink / balloon','Bloom','Petal fall'];
+        if (!vuln.includes(stage)) return false;
+        return days.slice(0,3).some(d => d.loF != null && d.loF <= 32);
+      },
+      due(days) {
+        const frostDay = days.slice(0,3).find(d => d.loF != null && d.loF <= 32);
+        return frostDay ? `${frostDay.dow} low ${frostDay.loF}°F` : 'Next 48 hrs';
+      },
+    },
+    {
+      key: 'auto-wx-spray-window',
+      title: 'Good spray window this week',
+      description: 'Your 7-day forecast shows 2+ consecutive dry days with temperatures in the ideal spray range (45–85°F). WSU guidance: apply sprays on dry days, finish by noon for good dry time. Do not spray when rain is forecast within 24 hours. Check what sprays are due for the current phenological stage.',
+      urgency: 'soon', trees: 'All trees', estMin: 10, category: 'spray',
+      condition(days, stage) {
+        const actionStages = ['Silver tip','Green tip','Half-inch green','Tight cluster','Pink / balloon','Petal fall','Calyx / fruit set'];
+        if (!actionStages.includes(stage)) return false;
+        // 2+ consecutive dry days with good temps
+        let streak = 0;
+        for (const d of days) {
+          if (!d.wet && d.hiF >= 45 && d.hiF <= 85) { streak++; if (streak >= 2) return true; }
+          else streak = 0;
+        }
+        return false;
+      },
+      due(days) {
+        const good = days.find(d => !d.wet && d.hiF >= 45 && d.hiF <= 85);
+        return good ? `${good.dow} looks good (${good.hiF}°F, dry)` : 'This week';
+      },
+    },
+    {
+      key: 'auto-wx-heat',
+      title: 'Heat advisory — protect developing fruit',
+      description: 'Temperatures above 90°F are forecast. WSU treefruit.wsu.edu: heat stress above 90°F can cause fruit sunburn, russeting, and premature drop. Do not apply oil-based sprays above 90°F. Ensure irrigation is running on schedule. If you have shade cloth for young trees, deploy it. Harvest-stage fruit ripens very rapidly in heat — monitor daily.',
+      urgency: 'soon', trees: 'All trees', estMin: 20, category: 'monitor',
+      condition(days, stage) {
+        const fruitStages = ['Calyx / fruit set','Early fruitlet','June drop / thinning','Fruitlet development','Fruit development','Pre-harvest','Harvest'];
+        if (!fruitStages.includes(stage)) return false;
+        return days.slice(0,4).some(d => d.hiF != null && d.hiF >= 90);
+      },
+      due(days) {
+        const hotDay = days.slice(0,4).find(d => d.hiF >= 90);
+        return hotDay ? `${hotDay.dow} forecast ${hotDay.hiF}°F` : 'This week';
+      },
+    },
+  ],
+
+  // ── 3. OBSERVATION RULES ───────────────────────────────────
+  // Matched when an observation is saved. Each rule specifies:
+  //   match: function(obs, tree) → boolean
+  //   urgent: if true, auto-add immediately; if false, prompt user
+  OBS_RULES: [
+    {
+      key: 'auto-obs-pest-apple',
+      urgent: true,
+      match: (obs, tree) => obs.type === 'pest' && tree && (tree.species||'').toLowerCase().includes('apple'),
+      title: (tree) => `Pest inspection — check codling moth traps (${tree.name})`,
+      description: (obs, tree) => `Pest observation logged on ${tree.fullName||tree.name}. WSU: check codling moth traps in nearby apple trees — a pest sighting on one tree often indicates broader pressure. Check for "stung" apples (shallow surface entries). If codling moth trap catch is high, start or continue spray program on 10–14 day interval. Notes: "${obs.notes}"`,
+      urgency: 'urgent', trees: (tree) => tree.fullName || tree.name, estMin: 30, category: 'monitor',
+    },
+    {
+      key: 'auto-obs-pest-cherry',
+      urgent: true,
+      match: (obs, tree) => obs.type === 'pest' && tree && (tree.species||'').toLowerCase().includes('cherry'),
+      title: (tree) => `Check remaining cherries for fruit fly / SWD (${tree.name})`,
+      description: (obs, tree) => `Pest observation logged on ${tree.fullName||tree.name}. WSU Cherry Spray Schedule: cherry fruit fly and spotted wing drosophila (SWD) are major cherry pests in western WA. Inspect nearby cherries for fly damage — small puncture marks on fruit surface. If present, begin or continue spinosad spray program immediately. Notes: "${obs.notes}"`,
+      urgency: 'urgent', trees: (tree) => tree.fullName || tree.name, estMin: 30, category: 'spray',
+    },
+    {
+      key: 'auto-obs-disease-fireblight',
+      urgent: true,
+      match: (obs, tree) => obs.type === 'disease' && (obs.notes||'').toLowerCase().match(/blight|shoot|wilt|shepherd|hook|canker/),
+      title: (tree) => `Possible fire blight — prune and contain (${tree.name})`,
+      description: (obs, tree) => `Disease observation with fire blight indicators on ${tree.fullName||tree.name}. WSU treefruit.wsu.edu: if fire blight is confirmed (wilting shoot tips in "shepherd's crook"), prune immediately — cut 8–10 inches below visible infection, disinfect tools with 10% bleach or 70% alcohol between EVERY cut. Do not leave cut material in the orchard. Scout all apple and pear trees within 2 days. Notes: "${obs.notes}"`,
+      urgency: 'urgent', trees: (tree) => tree.fullName || tree.name, estMin: 45, category: 'prune',
+    },
+    {
+      key: 'auto-obs-disease-general',
+      urgent: false,
+      match: (obs, tree) => obs.type === 'disease' && !(obs.notes||'').toLowerCase().match(/blight|shoot|wilt|shepherd|hook|canker/),
+      title: (tree) => `Inspect nearby trees for disease spread (${tree.name})`,
+      description: (obs, tree) => `Disease observation logged on ${tree.fullName||tree.name}. Check adjacent trees of the same species for similar symptoms — many fungal and bacterial diseases spread between trees during wet weather. WSU Hortsense (hortsense.cahnrs.wsu.edu) can help identify the specific disease and recommended controls. Notes: "${obs.notes}"`,
+      urgency: 'soon', trees: (tree) => tree.fullName || tree.name, estMin: 30, category: 'monitor',
+    },
+    {
+      key: 'auto-obs-health-concern',
+      urgent: false,
+      match: (obs, tree) => obs.health === 'concern',
+      title: (tree) => `Follow-up inspection — ${tree.name} flagged as concern`,
+      description: (obs, tree) => `${tree.fullName||tree.name} was marked as a health concern. Schedule a close inspection within the next week: check for pest entry points, cankers, unusual discoloration, gummosis, or leaf abnormalities. Photo-document symptoms and compare against WSU Hortsense or Puyallup Plant Clinic for identification if needed. Notes: "${obs.notes}"`,
+      urgency: 'soon', trees: (tree) => tree.fullName || tree.name, estMin: 20, category: 'monitor',
+    },
+    {
+      key: 'auto-obs-pest-general',
+      urgent: false,
+      match: (obs, tree) => obs.type === 'pest' && tree && !(tree.species||'').toLowerCase().match(/apple|cherry/),
+      title: (tree) => `Scout surrounding trees for pest spread (${tree.name})`,
+      description: (obs, tree) => `Pest observation logged on ${tree.fullName||tree.name}. Inspect adjacent trees of the same species for similar pest activity. WSU: many orchard pests migrate between trees once a population establishes. Note trap catches if pheromone traps are deployed. Consult WSU Hortsense (hortsense.cahnrs.wsu.edu) for specific pest ID and management options. Notes: "${obs.notes}"`,
+      urgency: 'soon', trees: (tree) => tree.fullName || tree.name, estMin: 30, category: 'monitor',
+    },
+  ],
+
+  // ── CORE ENGINE ────────────────────────────────────────────
+
+  // Check if a task with this ruleKey already exists in the DB cache
+  taskExists(ruleKey) {
+    return DB.tasks.some(t => t.ruleKey === ruleKey);
+  },
+
+  // Upsert a seasonal or weather task. Never overwrites done state.
+  async upsertTask(ruleKey, payload) {
+    if (!window._db) return;
+    const existing = DB.tasks.find(t => t.ruleKey === ruleKey);
+    if (existing) {
+      // Already exists — update metadata (due, urgency) but never touch done state
+      if (existing.done) return; // respect completion
+      const update = { urgency: payload.urgency, due: payload.due };
+      await DB.updateTask(existing.id, update);
+    } else {
+      // Create new
+      const { id:_, ...clean } = payload;
+      try {
+        const ref = await window._fs.addDoc(
+          window._fs.collection(window._db, 'tasks'),
+          { ...clean, ruleKey, createdAt: window._fs.serverTimestamp() }
+        );
+        const newTask = { id: ref.id, ...clean, ruleKey };
+        DB.tasks.push(newTask);
+      } catch(e) { console.warn('SMART_TASKS upsertTask:', e); }
+    }
+  },
+
+  // Run seasonal rules for the current phenological stage
+  async runSeasonalRules() {
+    const { stage } = getPhenologicalStage(new Date());
+    for (const rule of this.SEASONAL_RULES) {
+      const isActive = rule.stages.includes(stage);
+      const existing = DB.tasks.find(t => t.ruleKey === rule.key);
+
+      if (isActive) {
+        await this.upsertTask(rule.key, {
+          title: rule.title,
+          description: rule.description,
+          urgency: rule.urgency,
+          due: rule.due,
+          trees: rule.trees,
+          estMin: rule.estMin,
+          category: rule.category,
+          source: 'seasonal',
+          done: false,
+        });
+      } else if (existing && !existing.done) {
+        // Stage has passed — mark expired so it sinks out of active view
+        // We don't delete — user may have notes/completion data
+        await DB.updateTask(existing.id, { urgency: 'upcoming', source: 'seasonal-expired' });
+      }
+    }
+  },
+
+  // Run weather rules after forecast loads
+  async runWeatherRules(forecastDays, stage) {
+    if (!forecastDays || !forecastDays.length) return;
+    for (const rule of this.WEATHER_RULES) {
+      const triggered = rule.condition(forecastDays, stage);
+      const existing = DB.tasks.find(t => t.ruleKey === rule.key);
+      if (triggered) {
+        await this.upsertTask(rule.key, {
+          title: rule.title,
+          description: rule.description,
+          urgency: rule.urgency,
+          due: rule.due(forecastDays),
+          trees: rule.trees,
+          estMin: rule.estMin,
+          category: rule.category,
+          source: 'weather',
+          done: false,
+        });
+      } else if (existing && !existing.done) {
+        // Condition cleared — expire the task
+        await DB.updateTask(existing.id, { source: 'weather-expired', urgency: 'upcoming' });
+      }
+    }
+  },
+
+  // Run observation rules immediately after an obs is saved.
+  // Returns { autoAdded: [], suggestions: [] } for caller to act on.
+  async runObsRules(obs, tree) {
+    const autoAdded = [];
+    const suggestions = [];
+    for (const rule of this.OBS_RULES) {
+      if (!rule.match(obs, tree)) continue;
+      // Build a unique key per tree so different trees get separate tasks
+      const ruleKey = rule.key + '-' + (tree ? tree.id : 'unknown');
+      const title = typeof rule.title === 'function' ? rule.title(tree) : rule.title;
+      const description = typeof rule.description === 'function' ? rule.description(obs, tree) : rule.description;
+      const trees = typeof rule.trees === 'function' ? rule.trees(tree) : rule.trees;
+      const payload = {
+        title, description,
+        urgency: rule.urgency,
+        due: 'Based on recent observation',
+        trees, estMin: rule.estMin, category: rule.category,
+        source: 'observation',
+        done: false,
+      };
+      if (rule.urgent) {
+        await this.upsertTask(ruleKey, payload);
+        autoAdded.push(title);
+      } else {
+        suggestions.push({ ruleKey, payload, title });
+      }
+    }
+    return { autoAdded, suggestions };
+  },
+
+  // Master run — called on firebase-ready
+  async run() {
+    try {
+      await DB.getTasks(); // ensure cache is warm
+      await this.runSeasonalRules();
+      const { stage } = getPhenologicalStage(new Date());
+      if (weatherState.days) await this.runWeatherRules(weatherState.days, stage);
+    } catch(e) { console.warn('SMART_TASKS.run:', e); }
   },
 };
 
@@ -2385,7 +2851,7 @@ async function buildTempestForecast(today) {
     const wet   = tempestIsWet(precipPct, precipIn * 25.4); // convert in→mm for isWet check
     const note  = sprayNote(hiF, precipIn * 25.4, wet);
 
-    forecastForAlert.push({ dow, hiF, precipIn, wet, icon });
+    forecastForAlert.push({ dow, hiF, loF, precipIn, wet, icon });
 
     const el = document.createElement('div');
     el.className = 'weather-day' + (i === 0 ? ' today' : '');
@@ -2400,6 +2866,12 @@ async function buildTempestForecast(today) {
   weatherState.fetchedAt = Date.now();
   buildDashSubline(today);
   buildAlertBar(today, forecastForAlert);
+  // Re-run weather rules now that forecast is available
+  const { stage: wxStage } = getPhenologicalStage(today);
+  SMART_TASKS.runWeatherRules(forecastForAlert, wxStage).then(() => {
+    buildTasks();
+    buildDashStats();
+  });
 }
 
 /* ---- Open-Meteo fallback (dev / local preview) ---- */
@@ -2426,7 +2898,7 @@ async function buildWeatherOpenMeteo(today) {
       const code = codes[i]; const { icon } = wmoInfo(code);
       const wet = wmoIsWet(code) || mm > 2;
       const note = sprayNote(hi, mm, wet);
-      days.push({ dow, hiF: hi, precipIn: inPrecip, wet, icon });
+      days.push({ dow, hiF: hi, loF: lo, precipIn: inPrecip, wet, icon });
       const el = document.createElement('div');
       el.className = 'weather-day' + (i === 0 ? ' today' : '');
       const rainStr = mm > 0 ? `<div class="w-note">${inPrecip.toFixed(2)}"</div>` : '';
@@ -2438,6 +2910,12 @@ async function buildWeatherOpenMeteo(today) {
     weatherState.days = days; weatherState.fetchedAt = Date.now();
     buildDashSubline(today);
     buildAlertBar(today, days);
+    // Re-run weather rules with Open-Meteo forecast
+    const { stage: wxStageOM } = getPhenologicalStage(today);
+    SMART_TASKS.runWeatherRules(days, wxStageOM).then(() => {
+      buildTasks();
+      buildDashStats();
+    });
   } catch(err) {
     console.warn('Open-Meteo fallback failed:', err);
     strip.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:10px;font-weight:300">Weather unavailable</div>';
@@ -2898,7 +3376,7 @@ function renderTaskList() {
         </div>`;
       list.appendChild(el);
     });
-    updateDoneCount(validTasks);
+    updateDoneCount(validTasks.filter(t => t.urgency === 'urgent' || t.urgency === 'soon'));
   });
 }
 
@@ -3085,17 +3563,32 @@ function submitLog() {
     displayDate: displayDate,
   };
 
-  DB.saveObservation(obs).then(() => {
+  DB.saveObservation(obs).then(async () => {
     DB.updateTree(state.selectedLogTree.id, treeUpdates);
     const stageMsg = treeUpdates.currentStage ? ` · Stage → ${treeUpdates.currentStage}` : '';
     showToast('Observation saved ✓' + stageMsg);
+
+    // Run observation-triggered smart tasks
+    const savedTree = state.selectedLogTree;
+    const { autoAdded, suggestions } = await SMART_TASKS.runObsRules(obs, savedTree);
+    if (autoAdded.length) {
+      setTimeout(() => showToast(`📋 Task added: ${autoAdded[0]}`), 1800);
+      buildTasks();
+      buildDashStats();
+    }
+    if (suggestions.length) {
+      // Show suggestion prompt for the first non-urgent match
+      const sug = suggestions[0];
+      showObsSuggestion(sug);
+    }
+
     buildRecentObs();
     buildActivityFeed();
     buildDashStats();
     buildMap();
     buildDashMiniGrid();
     // Refresh map panel if this tree is currently selected there
-    const savedTreeId = state.selectedLogTree.id;
+    const savedTreeId = savedTree.id;
     if (state.selectedTree && state.selectedTree.id === savedTreeId) {
       DB.getTree(savedTreeId).then(fresh => {
         if (fresh) { state.selectedTree = fresh; selectMapTree(fresh.id); }
@@ -3884,6 +4377,13 @@ window.addEventListener('firebase-ready', () => {
   buildAlertBar(today, weatherState.days);
   // Backfill any trees with growth observations still stuck on Dormant
   migrateGrowthStages();
+  // Run smart task engine — seasonal rules fire immediately, weather rules
+  // fire again after forecast loads (see buildTempestForecast / buildWeatherOpenMeteo)
+  SMART_TASKS.run().then(() => {
+    buildTasks();
+    buildDashStats();
+    buildAlertBar(new Date(), weatherState.days);
+  });
   // Kick off Rachio fetch after a short delay so it doesn't compete with Firestore
   setTimeout(() => fetchRachio(), 1200);
 });
@@ -4234,6 +4734,41 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+/* ============================================================
+   OBSERVATION TASK SUGGESTION PROMPT
+   ============================================================ */
+let _pendingObsSuggestion = null;
+let _obsSuggestionTimeout = null;
+
+function showObsSuggestion(sug) {
+  _pendingObsSuggestion = sug;
+  const panel = document.getElementById('obs-suggestion-panel');
+  const titleEl = document.getElementById('obs-suggestion-title');
+  if (!panel || !titleEl) return;
+  titleEl.textContent = sug.title;
+  panel.style.display = 'block';
+  // Auto-dismiss after 12 seconds if no action
+  if (_obsSuggestionTimeout) clearTimeout(_obsSuggestionTimeout);
+  _obsSuggestionTimeout = setTimeout(dismissObsSuggestion, 12000);
+}
+
+function dismissObsSuggestion() {
+  const panel = document.getElementById('obs-suggestion-panel');
+  if (panel) panel.style.display = 'none';
+  _pendingObsSuggestion = null;
+  if (_obsSuggestionTimeout) clearTimeout(_obsSuggestionTimeout);
+}
+
+async function acceptObsSuggestion() {
+  if (!_pendingObsSuggestion) return;
+  const { ruleKey, payload } = _pendingObsSuggestion;
+  dismissObsSuggestion();
+  await SMART_TASKS.upsertTask(ruleKey, payload);
+  buildTasks();
+  buildDashStats();
+  showToast('📋 Task added to your list');
 }
 
 /* ============================================================
