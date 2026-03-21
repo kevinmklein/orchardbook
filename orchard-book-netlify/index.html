@@ -1877,18 +1877,18 @@ const DB = {
 
   // Tasks seeded once if Firestore tasks collection is empty
   defaultTasks: [
-    { id:'tk1', title:'Apply copper fungicide spray', description:'Fire blight prevention window is open now — apply at green tip to pink stage on all apples, pears, and cherries. Mix at 3 tbsp/gal and spray to runoff. Wet NW spring forecast increases urgency significantly.', urgency:'urgent', due:'Mar 15–25', sortOrder:1, trees:'All apples, pears, cherries', estMin:50, done:false, category:'spray' },
-    { id:'tk2', title:'Finish dormant pruning — pears', description:'Complete dormant pruning on all pear trees before bud swell advances further. Prioritize crossing branches, downward growth, and water sprouts. Do not remove more than 25% of canopy in one season.', urgency:'urgent', due:'By Mar 18', sortOrder:2, trees:'All pear trees', estMin:120, done:false, category:'prune' },
-    { id:'tk3', title:'Peach leaf curl — final spray window', description:'Apply lime sulfur or fixed copper on all peach trees before buds break. This is the last opportunity until next dormancy season. Monitor peach trees closely for bud swell progression.', urgency:'urgent', due:'Before Mar 20', sortOrder:3, trees:'All peach trees', estMin:25, done:false, category:'spray' },
-    { id:'tk4', title:'Apply balanced spring fertilizer', description:'NW soils are often nitrogen-deficient in spring. Apply 10-10-10 fertilizer at the drip line once soil temps exceed 50°F. Avoid high-nitrogen formulas on pears — it increases fire blight susceptibility.', urgency:'soon', due:'By Apr 1', sortOrder:4, trees:'All trees', estMin:60, done:false, category:'fertilize' },
-    { id:'tk5', title:'Cherry dormant oil spray', description:'Apply horticultural oil to all cherry trees to smother overwintering scale, aphid eggs, and mites. Best applied on a mild dry day (above 40°F) before bud break. Thorough coverage is essential.', urgency:'soon', due:'Before bud break', sortOrder:5, trees:'All cherry trees', estMin:30, done:false, category:'spray' },
-    { id:'tk6', title:'Place codling moth pheromone traps', description:'Set pheromone traps in all apple trees by pink stage. NW Washington emergence typically late April when sustained temps exceed 50°F. Use one trap per 4 trees minimum, check weekly.', urgency:'upcoming', due:'Late April', sortOrder:6, trees:'All apple trees', estMin:30, done:false, category:'monitor' },
-    { id:'tk7', title:'Apple maggot barrier bags / traps', description:'Apply Surround kaolin clay or hang red sticky sphere traps in apples by June. Apple maggot is a significant pest in western Washington — early intervention is key to fruit quality.', urgency:'upcoming', due:'Early June', sortOrder:8, trees:'All apple trees', estMin:60, done:false, category:'monitor' },
-    { id:'tk8', title:'Fruit thinning after June drop', description:'Thin apples and pears to 1 fruit per spur at 6 inch spacing, plums to 2–3 inches. Critical for fruit size, quality, and preventing biennial bearing. This is the highest-yield intervention in the orchard year.', urgency:'upcoming', due:'Late May–June', sortOrder:7, trees:'All apples, pears, plums', estMin:240, done:false, category:'thin' },
-    { id:'tk9', title:'Cherry harvest — Lapins, Rainier, Bing', description:'Monitor cherries closely for ripeness: full color, slightly soft, sweet taste, brown seeds. Harvest promptly when ready — cherries do not continue ripening off the tree. Watch for bird pressure.', urgency:'upcoming', due:'June–July', sortOrder:9, trees:'All cherry trees', estMin:120, done:false, category:'harvest' },
-    { id:'tk10', title:'Summer pruning — water sprouts', description:'Remove vigorous upright water sprouts from all trees in summer. This improves light penetration, reduces disease pressure, and redirects energy to fruit. Do not summer-prune peaches heavily.', urgency:'upcoming', due:'July–August', sortOrder:10, trees:'All trees', estMin:90, done:false, category:'prune' },
-    { id:'tk11', title:'Peach and plum harvest window', description:'Monitor peaches and plums for ripeness: background color changes from green to yellow/cream, fruit softens at the tip, and releases from spur with gentle twist. Taste-test before full harvest.', urgency:'upcoming', due:'August', sortOrder:11, trees:'All peach and plum trees', estMin:90, done:false, category:'harvest' },
-    { id:'tk12', title:'Fall cleanup — remove all dropped fruit', description:'Remove all fallen fruit from the orchard floor promptly throughout the season, and thoroughly after harvest. Dropped fruit is the primary overwintering site for codling moth, brown rot, and apple maggot.', urgency:'upcoming', due:'Ongoing fall', sortOrder:12, trees:'All trees', estMin:60, done:false, category:'other' },
+    { id:'tk1', ruleKey:'auto-fireblight-copper', title:'Apply copper fungicide spray', description:'Fire blight prevention window is open now — apply at green tip to pink stage on all apples, pears, and cherries. Mix at 3 tbsp/gal and spray to runoff. Wet NW spring forecast increases urgency significantly.', urgency:'urgent', due:'Mar 15–25', sortOrder:1, trees:'All apples, pears, cherries', estMin:50, done:false, category:'spray' },
+    { id:'tk2', ruleKey:'auto-dormant-prune-pome', title:'Finish dormant pruning — pears', description:'Complete dormant pruning on all pear trees before bud swell advances further. Prioritize crossing branches, downward growth, and water sprouts. Do not remove more than 25% of canopy in one season.', urgency:'urgent', due:'By Mar 18', sortOrder:2, trees:'All pear trees', estMin:120, done:false, category:'prune' },
+    { id:'tk3', ruleKey:'auto-peach-leafcurl', title:'Peach leaf curl — final spray window', description:'Apply lime sulfur or fixed copper on all peach trees before buds break. This is the last opportunity until next dormancy season. Monitor peach trees closely for bud swell progression.', urgency:'urgent', due:'Before Mar 20', sortOrder:3, trees:'All peach trees', estMin:25, done:false, category:'spray' },
+    { id:'tk4', ruleKey:'auto-spring-fertilize', title:'Apply balanced spring fertilizer', description:'NW soils are often nitrogen-deficient in spring. Apply 10-10-10 fertilizer at the drip line once soil temps exceed 50°F. Avoid high-nitrogen formulas on pears — it increases fire blight susceptibility.', urgency:'soon', due:'By Apr 1', sortOrder:4, trees:'All trees', estMin:60, done:false, category:'fertilize' },
+    { id:'tk5', ruleKey:'auto-delayed-dormant-oil', title:'Cherry dormant oil spray', description:'Apply horticultural oil to all cherry trees to smother overwintering scale, aphid eggs, and mites. Best applied on a mild dry day (above 40°F) before bud break. Thorough coverage is essential.', urgency:'soon', due:'Before bud break', sortOrder:5, trees:'All cherry trees', estMin:30, done:false, category:'spray' },
+    { id:'tk6', ruleKey:'auto-codling-moth-traps', title:'Place codling moth pheromone traps', description:'Set pheromone traps in all apple trees by pink stage. NW Washington emergence typically late April when sustained temps exceed 50°F. Use one trap per 4 trees minimum, check weekly.', urgency:'upcoming', due:'Late April', sortOrder:6, trees:'All apple trees', estMin:30, done:false, category:'monitor' },
+    { id:'tk7', ruleKey:'auto-apple-maggot', title:'Apple maggot barrier bags / traps', description:'Apply Surround kaolin clay or hang red sticky sphere traps in apples by June. Apple maggot is a significant pest in western Washington — early intervention is key to fruit quality.', urgency:'upcoming', due:'Early June', sortOrder:8, trees:'All apple trees', estMin:60, done:false, category:'monitor' },
+    { id:'tk8', ruleKey:'auto-thin-fruitlets', title:'Fruit thinning after June drop', description:'Thin apples and pears to 1 fruit per spur at 6 inch spacing, plums to 2–3 inches. Critical for fruit size, quality, and preventing biennial bearing. This is the highest-yield intervention in the orchard year.', urgency:'upcoming', due:'Late May–June', sortOrder:7, trees:'All apples, pears, plums', estMin:240, done:false, category:'thin' },
+    { id:'tk9', ruleKey:'auto-cherry-harvest', title:'Cherry harvest — Lapins, Rainier, Bing', description:'Monitor cherries closely for ripeness: full color, slightly soft, sweet taste, brown seeds. Harvest promptly when ready — cherries do not continue ripening off the tree. Watch for bird pressure.', urgency:'upcoming', due:'June–July', sortOrder:9, trees:'All cherry trees', estMin:120, done:false, category:'harvest' },
+    { id:'tk10', ruleKey:'auto-summer-prune', title:'Summer pruning — water sprouts', description:'Remove vigorous upright water sprouts from all trees in summer. This improves light penetration, reduces disease pressure, and redirects energy to fruit. Do not summer-prune peaches heavily.', urgency:'upcoming', due:'July–August', sortOrder:10, trees:'All trees', estMin:90, done:false, category:'prune' },
+    { id:'tk11', ruleKey:'auto-peach-plum-harvest', title:'Peach and plum harvest window', description:'Monitor peaches and plums for ripeness: background color changes from green to yellow/cream, fruit softens at the tip, and releases from spur with gentle twist. Taste-test before full harvest.', urgency:'upcoming', due:'August', sortOrder:11, trees:'All peach and plum trees', estMin:90, done:false, category:'harvest' },
+    { id:'tk12', ruleKey:'auto-fall-cleanup', title:'Fall cleanup — remove all dropped fruit', description:'Remove all fallen fruit from the orchard floor promptly throughout the season, and thoroughly after harvest. Dropped fruit is the primary overwintering site for codling moth, brown rot, and apple maggot.', urgency:'upcoming', due:'Ongoing fall', sortOrder:12, trees:'All trees', estMin:60, done:false, category:'other' },
   ],
 
   async getTrees() {
@@ -2340,12 +2340,14 @@ const SMART_TASKS = {
     if (!window._db) return;
     const existing = DB.tasks.find(t => t.ruleKey === ruleKey);
     if (existing) {
-      // Already exists — update metadata (due, urgency) but never touch done state
-      if (existing.done) return; // respect completion
-      const update = { urgency: payload.urgency, due: payload.due };
+      // Already exists — update metadata but never touch done state
+      if (existing.done) return;
+      // Stamp ruleKey into Firestore if it's missing (backfills tk1–tk12)
+      const update = { urgency: payload.urgency, due: payload.due, ruleKey };
+      if (!existing.ruleKey) update.ruleKey = ruleKey;
       await DB.updateTask(existing.id, update);
     } else {
-      // Create new
+      // Create new — preserve sortOrder from payload if present
       const { id:_, ...clean } = payload;
       try {
         const ref = await window._fs.addDoc(
@@ -3148,14 +3150,14 @@ function buildDashMiniGrid() {
       grid.innerHTML = '<div style="font-size:11.5px;color:var(--text3);grid-column:span 4;font-weight:300;padding:8px 0">No trees registered yet. Use the form to add your first tree.</div>';
       return;
     }
-    // Build 6 rows of 4, displayed bottom-to-top (row 6 = top of grid = back of orchard)
+    // Build 6 rows of 4, positions 1–24 left to right, top to bottom (matches orchard map)
     const rows = [];
     for (let row = 0; row < 6; row++) {
       const cells = [];
       for (let col = 0; col < 4; col++) cells.push(row * 4 + col + 1);
       rows.push(cells);
     }
-    [...rows].reverse().forEach(rowPositions => {
+    rows.forEach(rowPositions => {
       rowPositions.forEach(pos => {
         const tree = trees.find(t => t.gridPosition === pos);
         const el = document.createElement('div');
@@ -3311,18 +3313,21 @@ function renderTaskList() {
   const list = document.getElementById('task-list');
   list.innerHTML = '';
   DB.getTasks().then(tasks => {
-    const validTasks = tasks.filter(t => t.title && t.urgency);
+    const VALID_URGENCY = new Set(['urgent','soon','upcoming']);
+    const validTasks = tasks
+      .filter(t => t.title && t.urgency)
+      .map(t => ({
+        ...t,
+        urgency: VALID_URGENCY.has(t.urgency) ? t.urgency : 'upcoming'
+      }));
     const filtered = state.taskFilter==='all' ? validTasks :
                      state.taskFilter==='done' ? validTasks.filter(t=>t.done) :
                      validTasks.filter(t=>!t.done && t.urgency===state.taskFilter);
     const urgencyRank = { urgent:0, soon:1, upcoming:2 };
     filtered.sort((a,b) => {
-      // Done tasks always sink to the bottom
       if (a.done !== b.done) return a.done ? 1 : -1;
-      // Then sort by urgency tier
-      const uDiff = (urgencyRank[a.urgency]??9) - (urgencyRank[b.urgency]??9);
+      const uDiff = (urgencyRank[a.urgency]??2) - (urgencyRank[b.urgency]??2);
       if (uDiff !== 0) return uDiff;
-      // Then by explicit sortOrder (chronological within tier)
       return (a.sortOrder??999) - (b.sortOrder??999);
     });
     if (!filtered.length) {
@@ -3376,7 +3381,9 @@ function renderTaskList() {
         </div>`;
       list.appendChild(el);
     });
-    updateDoneCount(validTasks.filter(t => t.urgency === 'urgent' || t.urgency === 'soon'));
+    const VALID_URG = new Set(['urgent','soon','upcoming']);
+    const normTasks = validTasks.map(t => ({...t, urgency: VALID_URG.has(t.urgency) ? t.urgency : 'upcoming'}));
+    updateDoneCount(normTasks.filter(t => t.urgency === 'urgent' || t.urgency === 'soon'));
   });
 }
 
