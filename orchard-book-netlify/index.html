@@ -964,6 +964,15 @@ input, select, textarea { font-family: inherit; font-weight: 300; }
 @media (max-width: 480px) {
   .zone-grid { grid-template-columns: 1fr; }
 }
+
+/* iOS Safari zoom prevention — font-size must be ≥16px on focused inputs */
+@media (max-width: 768px) {
+  .field-input, .field-select, .field-textarea,
+  input[type="text"], input[type="date"], input[type="number"],
+  select, textarea {
+    font-size: 16px !important;
+  }
+}
 .mobile-nav {
   display: none; background: var(--nav-bg);
   border-top: 1px solid var(--nav-border);
@@ -3116,7 +3125,14 @@ function buildDashTasks() {
   };
 
   DB.getTasks().then(tasks => {
-    const actionable = tasks.filter(t => !t.done && (t.urgency === 'urgent' || t.urgency === 'soon'));
+    const urgencyRank = { urgent:0, soon:1, upcoming:2 };
+    const actionable = tasks
+      .filter(t => !t.done && (t.urgency === 'urgent' || t.urgency === 'soon'))
+      .sort((a,b) => {
+        const uDiff = (urgencyRank[a.urgency]??9) - (urgencyRank[b.urgency]??9);
+        if (uDiff !== 0) return uDiff;
+        return (a.sortOrder??999) - (b.sortOrder??999);
+      });
 
     if (!actionable.length) {
       wrap.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:300">No open tasks — orchard is on track.</div>';
