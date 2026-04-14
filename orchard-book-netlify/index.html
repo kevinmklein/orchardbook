@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Orchard Book</title>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#1b3a20">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -1137,6 +1139,45 @@ input, select, textarea { font-family: inherit; font-weight: 400; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ============================================================
+   UPDATE NOTIFICATION BANNER
+   ============================================================ */
+#app-update-bar {
+  display: none;
+  position: fixed;
+  bottom: 72px;     /* above mobile nav */
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: linear-gradient(135deg, #2d7d1a, #1b3a20);
+  color: #e0f5c8;
+  padding: 12px 22px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 24px rgba(20,60,10,0.45);
+  z-index: 1000;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+#app-update-bar.show {
+  display: block;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+#app-update-bar .upd-link {
+  text-decoration: underline;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (min-width: 769px) {
+  #app-update-bar { bottom: 24px; }
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 
@@ -2003,6 +2044,9 @@ input, select, textarea { font-family: inherit; font-weight: 400; }
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="app-update-bar" role="alert" onclick="applyAppUpdate()">
+  🌿 OrchardBook has been updated. <span class="upd-link">Click here to refresh.</span>
+</div>
 
 <!-- Observation-triggered task suggestion panel -->
 <div id="obs-suggestion-panel" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:998;width:min(420px,92vw);background:var(--surface);border:1px solid var(--g200);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:14px 16px;font-family:var(--font-body);">
@@ -4944,6 +4988,38 @@ async function acceptObsSuggestion() {
   buildDashStats();
   showToast('📋 Task added to your list');
 }
+
+/* ============================================================
+   APP UPDATE CHECK
+   Polls index.html ETag/Last-Modified every 5 min.
+   If the server returns a different value than at load time,
+   shows the update notification banner.
+   ============================================================ */
+let _appETag = null;
+
+async function checkForAppUpdate() {
+  try {
+    const resp = await fetch('/index.html', { method: 'HEAD', cache: 'no-store' });
+    const tag = resp.headers.get('etag') || resp.headers.get('last-modified');
+    if (!tag) return;
+    if (_appETag === null) {
+      _appETag = tag;
+    } else if (tag !== _appETag) {
+      const bar = document.getElementById('app-update-bar');
+      if (bar && !bar.classList.contains('show')) {
+        bar.style.display = 'block';
+        requestAnimationFrame(() => bar.classList.add('show'));
+      }
+    }
+  } catch (e) { /* ignore network errors */ }
+}
+
+function applyAppUpdate() {
+  window.location.reload();
+}
+
+checkForAppUpdate();
+setInterval(checkForAppUpdate, 5 * 60 * 1000);
 
 /* ============================================================
    INIT
