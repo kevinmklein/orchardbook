@@ -3346,8 +3346,16 @@ function buildDashTasks() {
 
   DB.getTasks().then(tasks => {
     const urgencyRank = { urgent:0, soon:1, upcoming:2 };
+    const seenRuleKeys = new Set();
     const actionable = tasks
-      .filter(t => !t.done && (t.urgency === 'urgent' || t.urgency === 'soon'))
+      .filter(t => {
+        if (t.done || (t.urgency !== 'urgent' && t.urgency !== 'soon')) return false;
+        if (t.ruleKey) {
+          if (seenRuleKeys.has(t.ruleKey)) return false;
+          seenRuleKeys.add(t.ruleKey);
+        }
+        return true;
+      })
       .sort((a,b) => {
         const uDiff = (urgencyRank[a.urgency]??9) - (urgencyRank[b.urgency]??9);
         if (uDiff !== 0) return uDiff;
