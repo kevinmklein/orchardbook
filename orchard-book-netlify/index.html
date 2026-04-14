@@ -44,6 +44,7 @@
     serverTimestamp,
     query, orderBy
   } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDMr6LTZYM4Jhp50DV4wCyOeEY1bcDJjIY",
@@ -56,16 +57,28 @@
 
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
+  const auth = getAuth(app);
   window._db = db;
   window._fs = { collection, doc, getDoc, getDocs, addDoc, setDoc, deleteDoc, serverTimestamp, query, orderBy };
-  // Defer until after the main <script> block has parsed and init() has run
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 0);
-  } else {
-    document.addEventListener('DOMContentLoaded', () => {
+
+  // Sign in anonymously before firing firebase-ready — Firestore rules require request.auth != null
+  function dispatchReady() {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
       setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 0);
-    });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 0);
+      });
+    }
   }
+
+  signInAnonymously(auth)
+    .then(() => dispatchReady())
+    .catch(err => {
+      console.error('Firebase anonymous auth failed:', err);
+      // Still dispatch so the app renders — Firestore calls will fail gracefully
+      dispatchReady();
+    });
 </script>
 
 <style>
