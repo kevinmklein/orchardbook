@@ -334,6 +334,8 @@ input, select, textarea { font-family: inherit; font-weight: 400; }
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   position: relative;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
 .metric-card::before {
   content: '';
@@ -2564,16 +2566,26 @@ const SMART_TASKS = {
       if (!existing.ruleKey) update.ruleKey = ruleKey;
       await DB.updateTask(existing.id, update);
     } else {
-      // Create new — preserve sortOrder from payload if present
+      // Create new — optimistically push a placeholder first so any concurrent
+      // call (e.g. Tempest + Open-Meteo both firing runWeatherRules) sees the
+      // ruleKey already present and won't create a second Firestore document.
       const { id:_, ...clean } = payload;
+      const placeholderId = '__pending__' + ruleKey;
+      DB.tasks.push({ id: placeholderId, ...clean, ruleKey });
       try {
         const ref = await window._fs.addDoc(
           window._fs.collection(window._db, 'tasks'),
           { ...clean, ruleKey, createdAt: window._fs.serverTimestamp() }
         );
+        // Swap placeholder for the real Firestore doc
+        const idx = DB.tasks.findIndex(t => t.id === placeholderId);
         const newTask = { id: ref.id, ...clean, ruleKey };
-        DB.tasks.push(newTask);
-      } catch(e) { console.warn('SMART_TASKS upsertTask:', e); }
+        if (idx >= 0) DB.tasks[idx] = newTask; else DB.tasks.push(newTask);
+      } catch(e) {
+        // Remove placeholder on failure so we can retry next time
+        DB.tasks = DB.tasks.filter(t => t.id !== placeholderId);
+        console.warn('SMART_TASKS upsertTask:', e);
+      }
     }
   },
 
@@ -3538,8 +3550,19 @@ function renderTaskList() {
   list.innerHTML = '';
   DB.getTasks().then(tasks => {
     const VALID_URGENCY = new Set(['urgent','soon','upcoming']);
+    // Deduplicate by ruleKey — if weather rules ran before DB cache was warm,
+    // multiple Firestore docs with the same ruleKey may exist. Keep the first
+    // (most urgent after sort) and silently discard the rest.
+    const seenRuleKeys = new Set();
     const validTasks = tasks
-      .filter(t => t.title && t.urgency)
+      .filter(t => {
+        if (!t.title || !t.urgency) return false;
+        if (t.ruleKey) {
+          if (seenRuleKeys.has(t.ruleKey)) return false;
+          seenRuleKeys.add(t.ruleKey);
+        }
+        return true;
+      })
       .map(t => ({
         ...t,
         urgency: VALID_URGENCY.has(t.urgency) ? t.urgency : 'upcoming'
